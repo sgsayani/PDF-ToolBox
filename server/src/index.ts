@@ -1,0 +1,48 @@
+import type { Server } from 'node:http';
+
+import { createApp } from './app.js';
+import { connectDatabase, disconnectDatabase } from './config/database.js';
+import { env } from './config/env.js';
+import { storageService } from './services/storage.service.js';
+import { logger } from './utils/logger.js';
+
+async function bootstrap(): Promise<void> {
+  await storageService.init();
+  await connectDatabase();
+
+  const app = createApp();
+  const server: Server = app.listen(env.PORT, () => {
+    logger.info(`PDF Toolbox API listening on http://localhost:${env.PORT}`, {
+      environment: env.NODE_ENV,
+    });
+  });
+
+  const shutdown = (signal: string) => {
+    logger.info(`Received ${signal} — shutting down.`);
+
+    server.close(() => {
+      void (async () => {
+        await storageService.shutdown();
+        await disconnectDatabase();
+        process.exit(0);
+      })();
+    });
+
+    // Do not hang forever on lingering connections.
+    setTimeout(() => process.exit(1), 10_000).unref();
+  };
+
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+  process.on('unhandledRejection', (reason) => {
+    logger.error('Unhandled promise rejection', { reason: String(reason) });
+  });
+}
+
+bootstrap().catch((error: unknown) => {
+  logger.error('Failed to start the server', {
+    error: error instanceof Error ? (error.stack ?? error.message) : String(error),
+  });
+  process.exit(1);
+});
