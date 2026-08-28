@@ -96,6 +96,38 @@ export function validateDocxFile(file: File, maxBytes: number): string | null {
 }
 
 /**
+ * Generic client-side pre-flight, parameterised by file type — same caveat
+ * as `validatePdfFile`: not a security boundary, just fast feedback. Backs
+ * every "Convert to PDF" source-format page (Excel, CSV, PowerPoint, HTML,
+ * plain text), each of which just supplies its own extensions/MIME types
+ * instead of a hand-written validator like the ones above.
+ */
+export function validateFileByType(
+  file: File,
+  maxBytes: number,
+  options: { extensions: string[]; mimeTypes: string[]; label: string },
+): string | null {
+  const name = file.name.toLowerCase();
+  const hasExtension = options.extensions.some((ext) => name.endsWith(ext));
+  const acceptedMimeTypes = new Set([...options.mimeTypes, 'application/octet-stream', 'binary/octet-stream', '']);
+
+  if (!hasExtension) {
+    return `“${file.name}” isn’t a ${options.label} file.`;
+  }
+  if (!acceptedMimeTypes.has(file.type)) {
+    return `“${file.name}” doesn’t look like a ${options.label} file.`;
+  }
+  if (file.size === 0) {
+    return `“${file.name}” is empty.`;
+  }
+  if (file.size > maxBytes) {
+    return `“${file.name}” is ${formatBytes(file.size)}. The limit is ${formatBytes(maxBytes)}.`;
+  }
+
+  return null;
+}
+
+/**
  * Filters a DataTransfer/FileList down to plain files, ignoring directories.
  * `extensions` defaults to PDF; pass `['.jpg', '.jpeg', '.png']` for images.
  */

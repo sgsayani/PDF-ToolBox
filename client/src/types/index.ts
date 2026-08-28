@@ -1,5 +1,5 @@
 /** The kinds of file the server's temporary store can hold. */
-export type StoredFileKind = 'pdf' | 'jpg' | 'png' | 'txt' | 'docx' | 'zip';
+export type StoredFileKind = 'pdf' | 'jpg' | 'png' | 'txt' | 'docx' | 'zip' | 'html' | 'csv' | 'xlsx' | 'pptx';
 
 /** A working file held by the server for the duration of a session. */
 export interface ApiFile {
@@ -100,7 +100,20 @@ export type PdfOperation =
   | 'to-jpg'
   | 'to-word'
   | 'images-to-pdf'
-  | 'scanner-cleanup';
+  | 'scanner-cleanup'
+  | 'excel-to-pdf'
+  | 'csv-to-pdf'
+  | 'pptx-to-pdf'
+  | 'html-to-pdf'
+  | 'text-to-pdf'
+  | 'to-excel'
+  | 'to-csv'
+  | 'to-pptx'
+  | 'to-html'
+  | 'compress'
+  | 'crop'
+  | 'redact'
+  | 'translate';
 
 /** Response from converting PDF pages to JPEGs — one or many, plus an optional ZIP bundle. */
 export interface ImageExportResponse {
@@ -243,7 +256,15 @@ export type WorkspaceTool =
   | 'to-word'
   | 'fill-form'
   | 'ocr'
-  | 'scanner-cleanup';
+  | 'scanner-cleanup'
+  | 'to-excel'
+  | 'to-csv'
+  | 'to-pptx'
+  | 'to-html'
+  | 'compress'
+  | 'crop'
+  | 'redact'
+  | 'translate';
 
 /** The field kinds `fill-form` actually fills; anything else is `'unsupported'`. */
 export type FormFieldType = 'text' | 'checkbox' | 'radio' | 'dropdown' | 'optionList' | 'unsupported';
@@ -266,6 +287,55 @@ export interface FormInspection {
 
 /** One field's value as submitted for filling — matches `FormFieldInfo.currentValue`'s shape. */
 export type FormFieldValue = string | boolean | string[];
+
+export const COMPRESSION_LEVELS = ['basic', 'balanced', 'strong'] as const;
+export type CompressionLevel = (typeof COMPRESSION_LEVELS)[number];
+
+export interface CompressResponse {
+  operation: 'compress';
+  file: ApiFile;
+  originalSize: number;
+  compressedSize: number;
+  /** False when the file couldn't be made smaller — the response is still the original, re-saved, not a broken result. */
+  reduced: boolean;
+  durationMs: number;
+}
+
+/** A crop/redaction rectangle, as a fraction (0–1) of the page's own width/height, from its top-left corner. */
+export interface FractionRect {
+  xFraction: number;
+  yFraction: number;
+  widthFraction: number;
+  heightFraction: number;
+}
+
+export interface RedactionArea extends FractionRect {
+  page: number;
+}
+
+export const TRANSLATE_LANGUAGES = ['EN', 'ES', 'FR', 'DE', 'IT', 'PT', 'NL', 'PL', 'RU', 'JA', 'ZH'] as const;
+export type TranslateLanguage = (typeof TRANSLATE_LANGUAGES)[number];
+
+export const TRANSLATE_LANGUAGE_LABELS: Record<TranslateLanguage, string> = {
+  EN: 'English',
+  ES: 'Spanish',
+  FR: 'French',
+  DE: 'German',
+  IT: 'Italian',
+  PT: 'Portuguese',
+  NL: 'Dutch',
+  PL: 'Polish',
+  RU: 'Russian',
+  JA: 'Japanese',
+  ZH: 'Chinese',
+};
+
+export interface TranslateResponse {
+  operation: 'translate';
+  file: ApiFile;
+  detectedSourceLang: string | null;
+  durationMs: number;
+}
 
 /** An image queued for the images → PDF converter. */
 export interface ImageCandidate {

@@ -3,22 +3,31 @@ import { Router } from 'express';
 import { convertController } from '../controllers/convert.controller.js';
 import { ocrController } from '../controllers/ocr.controller.js';
 import { pdfController } from '../controllers/pdf.controller.js';
+import { pdfExportController } from '../controllers/pdfExport.controller.js';
 import { processingRateLimiter } from '../middleware/rateLimit.js';
 import { enforceUsageLimit } from '../middleware/usageLimit.js';
 import { validateBody } from '../middleware/validate.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import {
+  compressSchema,
+  cropSchema,
   fillFormSchema,
   mergeSchema,
   ocrSchema,
   organizeSchema,
   pageNumbersSchema,
+  redactSchema,
   removeMetadataSchema,
   scannerCleanupSchema,
   signSchema,
   splitSchema,
+  toCsvSchema,
+  toExcelSchema,
+  toHtmlSchema,
   toJpgSchema,
+  toPptxSchema,
   toWordSchema,
+  translateSchema,
   watermarkSchema,
 } from '../validators/pdf.validators.js';
 
@@ -80,3 +89,18 @@ pdfRouter.post(
   validateBody(scannerCleanupSchema),
   asyncHandler(pdfController.cleanup),
 );
+
+/**
+ * Productization tools. `crop` and `redact` produce a normal PDF and reuse
+ * the shared pipeline; `compress` returns size stats alongside the file and
+ * `to-excel`/`to-csv`/`to-html`/`to-pptx` produce something that isn't a
+ * PDF, so all of those get their own controller, same as `to-jpg`/`to-word`.
+ */
+pdfRouter.post('/compress', validateBody(compressSchema), asyncHandler(pdfController.compress));
+pdfRouter.post('/crop', validateBody(cropSchema), asyncHandler(pdfController.crop));
+pdfRouter.post('/redact', validateBody(redactSchema), asyncHandler(pdfController.redact));
+pdfRouter.post('/translate', validateBody(translateSchema), asyncHandler(pdfController.translate));
+pdfRouter.post('/to-excel', validateBody(toExcelSchema), asyncHandler(pdfExportController.toExcel));
+pdfRouter.post('/to-csv', validateBody(toCsvSchema), asyncHandler(pdfExportController.toCsv));
+pdfRouter.post('/to-html', validateBody(toHtmlSchema), asyncHandler(pdfExportController.toHtml));
+pdfRouter.post('/to-pptx', validateBody(toPptxSchema), asyncHandler(pdfExportController.toPptx));

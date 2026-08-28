@@ -1,8 +1,11 @@
 import type {
   ApiFile,
+  CompressionLevel,
+  CompressResponse,
   ExtractedTextResponse,
   FormFieldValue,
   FormInspection,
+  FractionRect,
   HealthResponse,
   ImageExportResponse,
   OcrLanguage,
@@ -13,6 +16,9 @@ import type {
   PageTarget,
   PdfMetadataView,
   PositionPreset,
+  RedactionArea,
+  TranslateLanguage,
+  TranslateResponse,
   UploadResponse,
 } from '../types';
 import { downloadUrl, requestJson, uploadFile, type UploadOptions } from './apiClient';
@@ -214,6 +220,66 @@ export const pdfApi = {
     return requestJson<OperationResponse>('/pdf/fill-form', {
       method: 'POST',
       body: JSON.stringify({ fileId, values }),
+    });
+  },
+
+  compress(fileId: string, level: CompressionLevel): Promise<CompressResponse> {
+    return requestJson<CompressResponse>('/pdf/compress', {
+      method: 'POST',
+      body: JSON.stringify({ fileId, level }),
+    });
+  },
+
+  crop(fileId: string, pages: PageTarget, rect: FractionRect): Promise<OperationResponse> {
+    return requestJson<OperationResponse>('/pdf/crop', {
+      method: 'POST',
+      body: JSON.stringify({ fileId, pages, rect }),
+    });
+  },
+
+  redact(fileId: string, areas: RedactionArea[]): Promise<OperationResponse> {
+    return requestJson<OperationResponse>('/pdf/redact', {
+      method: 'POST',
+      body: JSON.stringify({ fileId, areas }),
+    });
+  },
+
+  translate(
+    fileId: string,
+    targetLang: TranslateLanguage,
+    sourceLang?: TranslateLanguage,
+  ): Promise<TranslateResponse> {
+    return requestJson<TranslateResponse>('/pdf/translate', {
+      method: 'POST',
+      body: JSON.stringify({ fileId, targetLang, sourceLang }),
+    });
+  },
+
+  toExcel(fileId: string): Promise<OperationResponse> {
+    return requestJson<OperationResponse>('/pdf/to-excel', {
+      method: 'POST',
+      body: JSON.stringify({ fileId }),
+    });
+  },
+
+  toCsv(fileId: string): Promise<OperationResponse> {
+    return requestJson<OperationResponse>('/pdf/to-csv', {
+      method: 'POST',
+      body: JSON.stringify({ fileId }),
+    });
+  },
+
+  toHtml(fileId: string): Promise<OperationResponse> {
+    return requestJson<OperationResponse>('/pdf/to-html', {
+      method: 'POST',
+      body: JSON.stringify({ fileId }),
+    });
+  },
+
+  toPptx(fileId: string): Promise<OperationResponse> {
+    return requestJson<OperationResponse>('/pdf/to-pptx', {
+      method: 'POST',
+      body: JSON.stringify({ fileId }),
     });
   },
 

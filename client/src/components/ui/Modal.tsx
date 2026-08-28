@@ -82,7 +82,7 @@ export function Modal({
       {children && <div className="px-5 pt-4 text-sm text-ink-muted">{children}</div>}
 
       {footer && (
-        <div className="mt-5 flex flex-col-reverse gap-2 border-t border-line bg-raised/60 px-5 py-3.5 sm:flex-row sm:justify-end">
+        <div className="mt-5 flex flex-col-reverse flex-wrap gap-2 border-t border-line bg-raised/60 px-5 py-3.5 sm:flex-row sm:justify-end">
           {footer}
         </div>
       )}

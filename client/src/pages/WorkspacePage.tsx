@@ -3,6 +3,9 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { FileWarning, ShieldCheck } from 'lucide-react';
 
+import { CompressPanel } from '../components/workspace/CompressPanel';
+import { CompressResultDialog } from '../components/workspace/CompressResultDialog';
+import { CropPanel, type CropFormState } from '../components/workspace/CropPanel';
 import { ExtractTextPanel } from '../components/workspace/ExtractTextPanel';
 import { ExtractTextViewer } from '../components/workspace/ExtractTextViewer';
 import { FormFieldsEditor } from '../components/workspace/FormFieldsEditor';
@@ -14,11 +17,13 @@ import { MetadataPanel } from '../components/workspace/MetadataPanel';
 import { OcrPanel, type OcrFormState } from '../components/workspace/OcrPanel';
 import { OcrResultDialog } from '../components/workspace/OcrResultDialog';
 import { OrganizePanel } from '../components/workspace/OrganizePanel';
+import { PageDrawWorkspace } from '../components/workspace/PageDrawWorkspace';
 import { PageGrid } from '../components/workspace/PageGrid';
 import { PageGridSection } from '../components/workspace/PageGridSection';
 import { PageNumbersPanel, type PageNumbersFormState } from '../components/workspace/PageNumbersPanel';
 import { PageToolbar } from '../components/workspace/PageToolbar';
 import { ProtectPanel } from '../components/workspace/ProtectPanel';
+import { RedactPanel } from '../components/workspace/RedactPanel';
 import { ResultDialog } from '../components/workspace/ResultDialog';
 import { ScannerCleanupPanel, type CleanupFormState } from '../components/workspace/ScannerCleanupPanel';
 import { SignPanel, type SignFormState } from '../components/workspace/SignPanel';
@@ -26,6 +31,7 @@ import { SplitPanel, type SplitMode } from '../components/workspace/SplitPanel';
 import { ToJpgPanel, type ToJpgApplyTo } from '../components/workspace/ToJpgPanel';
 import { ToolPanel } from '../components/workspace/ToolPanel';
 import { ToolRail } from '../components/workspace/ToolRail';
+import { TranslatePanel, type TranslateFormState } from '../components/workspace/TranslatePanel';
 import { WatermarkPanel, type WatermarkFormState } from '../components/workspace/WatermarkPanel';
 import { WorkspaceHeader } from '../components/workspace/WorkspaceHeader';
 import { UploadTaskRow } from '../components/upload/UploadTaskRow';
@@ -36,6 +42,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { useToast } from '../components/ui/Toast';
 import { useLimits } from '../hooks/useLimits';
 import { usePageSelection } from '../hooks/usePageSelection';
+import { useRecentTools } from '../hooks/useRecentTools';
 import { usePdfPreview } from '../hooks/usePdfPreview';
 import { useHistoryState } from '../hooks/useHistoryState';
 import { useUploadQueue } from '../hooks/useUploadQueue';
@@ -48,13 +55,17 @@ import { ApiError } from '../services/apiClient';
 import { pdfApi } from '../services/pdfApi';
 import type {
   ApiFile,
+  CompressionLevel,
+  CompressResponse,
   FormFieldValue,
+  FractionRect,
   ImageExportResponse,
   MergeCandidate,
   OcrResponse,
   OperationResponse,
   PageDraft,
   PageTarget,
+  RedactionArea,
   UploadResponse,
   WorkspaceDocument,
   WorkspaceTool,
@@ -98,6 +109,14 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
   const { preview, status: previewStatus } = usePdfPreview(document.blob);
 
   const [tool, setTool] = useState<WorkspaceTool>('organize');
+  const { recent, recordUse } = useRecentTools();
+  const selectTool = useCallback(
+    (next: WorkspaceTool) => {
+      setTool(next);
+      recordUse(next);
+    },
+    [recordUse],
+  );
   const [splitMode, setSplitMode] = useState<SplitMode>('selection');
   const [result, setResult] = useState<ApiFile | null>(null);
   const [resultTool, setResultTool] = useState<WorkspaceTool | null>(null);
@@ -199,6 +218,35 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
     (patch: Partial<CleanupFormState>) => setCleanupForm((current) => ({ ...current, ...patch })),
     [],
   );
+
+  // ---------------------------------------------------------- Productization
+
+  const [compressLevel, setCompressLevel] = useState<CompressionLevel>('balanced');
+  const [compressResult, setCompressResult] = useState<CompressResponse | null>(null);
+
+  const [drawPage, setDrawPage] = useState(1);
+
+  const [cropForm, setCropForm] = useState<CropFormState>({
+    applyTo: 'all',
+    selectedPages: [],
+  });
+  const [cropRect, setCropRect] = useState<FractionRect | null>(null);
+  const updateCropForm = useCallback(
+    (patch: Partial<CropFormState>) => setCropForm((current) => ({ ...current, ...patch })),
+    [],
+  );
+
+  const [redactAreas, setRedactAreas] = useState<RedactionArea[]>([]);
+
+  const [translateForm, setTranslateForm] = useState<TranslateFormState>({
+    targetLang: 'ES',
+    sourceLang: null,
+  });
+  const updateTranslateForm = useCallback(
+    (patch: Partial<TranslateFormState>) => setTranslateForm((current) => ({ ...current, ...patch })),
+    [],
+  );
+  const [translateUnavailable, setTranslateUnavailable] = useState(false);
 
   const extractTextQuery = useQuery({
     queryKey: ['extracted-text', document.fileId],
@@ -361,6 +409,69 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
     onError: handleError,
   });
 
+  const compressMutation = useMutation({
+    mutationFn: () => pdfApi.compress(document.fileId, compressLevel),
+    onSuccess: (response) => setCompressResult(response),
+    onError: handleError,
+  });
+
+  const cropMutation = useMutation({
+    mutationFn: () => {
+      if (!cropRect) throw new Error('No crop area drawn.');
+      const pages =
+        cropForm.applyTo === 'all' ? 'all' : cropForm.applyTo === 'current' ? [drawPage] : cropForm.selectedPages;
+      return pdfApi.crop(document.fileId, pages, cropRect);
+    },
+    onSuccess: (response) => handleSuccess(response, 'crop'),
+    onError: handleError,
+  });
+
+  const redactMutation = useMutation({
+    mutationFn: () => pdfApi.redact(document.fileId, redactAreas),
+    onSuccess: (response) => handleSuccess(response, 'redact'),
+    onError: handleError,
+  });
+
+  const translateMutation = useMutation({
+    mutationFn: () =>
+      pdfApi.translate(document.fileId, translateForm.targetLang, translateForm.sourceLang ?? undefined),
+    onSuccess: (response) => {
+      setTranslateUnavailable(false);
+      setResult(response.file);
+      setResultTool('translate');
+    },
+    onError: (error: unknown) => {
+      if (error instanceof ApiError && error.code === 'TRANSLATION_UNAVAILABLE') {
+        setTranslateUnavailable(true);
+      }
+      handleError(error);
+    },
+  });
+
+  const toExcelMutation = useMutation({
+    mutationFn: () => pdfApi.toExcel(document.fileId),
+    onSuccess: (response) => handleSuccess(response, 'to-excel'),
+    onError: handleError,
+  });
+
+  const toCsvMutation = useMutation({
+    mutationFn: () => pdfApi.toCsv(document.fileId),
+    onSuccess: (response) => handleSuccess(response, 'to-csv'),
+    onError: handleError,
+  });
+
+  const toHtmlMutation = useMutation({
+    mutationFn: () => pdfApi.toHtml(document.fileId),
+    onSuccess: (response) => handleSuccess(response, 'to-html'),
+    onError: handleError,
+  });
+
+  const toPptxMutation = useMutation({
+    mutationFn: () => pdfApi.toPptx(document.fileId),
+    onSuccess: (response) => handleSuccess(response, 'to-pptx'),
+    onError: handleError,
+  });
+
   const isProcessing =
     organizeMutation.isPending ||
     splitMutation.isPending ||
@@ -374,7 +485,15 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
     toWordMutation.isPending ||
     fillFormMutation.isPending ||
     ocrMutation.isPending ||
-    cleanupMutation.isPending;
+    cleanupMutation.isPending ||
+    compressMutation.isPending ||
+    cropMutation.isPending ||
+    redactMutation.isPending ||
+    translateMutation.isPending ||
+    toExcelMutation.isPending ||
+    toCsvMutation.isPending ||
+    toHtmlMutation.isPending ||
+    toPptxMutation.isPending;
 
   // ------------------------------------------------------------------ uploads
 
@@ -671,10 +790,75 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
             ),
         };
       }
+      case 'compress':
+        return {
+          label: 'Compress PDF',
+          disabled: false,
+          loading: compressMutation.isPending,
+          run: () => compressMutation.mutate(),
+        };
+      case 'crop': {
+        const noSelection = cropForm.applyTo === 'selected' && cropForm.selectedPages.length === 0;
+        return {
+          label: 'Apply crop',
+          disabled: !cropRect || noSelection,
+          loading: cropMutation.isPending,
+          run: () => cropMutation.mutate(),
+        };
+      }
+      case 'redact':
+        return {
+          label:
+            redactAreas.length > 0
+              ? `Apply ${redactAreas.length} redaction${redactAreas.length === 1 ? '' : 's'}`
+              : 'Apply redactions',
+          disabled: redactAreas.length === 0,
+          loading: redactMutation.isPending,
+          run: () => redactMutation.mutate(),
+        };
+      case 'translate':
+        return {
+          label: 'Translate',
+          disabled: false,
+          loading: translateMutation.isPending,
+          run: () => translateMutation.mutate(),
+        };
+      case 'to-excel':
+        return {
+          label: 'Convert to Excel',
+          disabled: false,
+          loading: toExcelMutation.isPending,
+          run: () => toExcelMutation.mutate(),
+        };
+      case 'to-csv':
+        return {
+          label: 'Convert to CSV',
+          disabled: false,
+          loading: toCsvMutation.isPending,
+          run: () => toCsvMutation.mutate(),
+        };
+      case 'to-html':
+        return {
+          label: 'Convert to HTML',
+          disabled: false,
+          loading: toHtmlMutation.isPending,
+          run: () => toHtmlMutation.mutate(),
+        };
+      case 'to-pptx':
+        return {
+          label: 'Convert to PowerPoint',
+          disabled: false,
+          loading: toPptxMutation.isPending,
+          run: () => toPptxMutation.mutate(),
+        };
     }
   }, [
     cleanupForm,
     cleanupMutation,
+    compressMutation,
+    cropForm,
+    cropMutation,
+    cropRect,
     document.filename,
     drafts,
     extractTextQuery.data,
@@ -694,6 +878,8 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
     previewStatus,
     protectMutation,
     protectPassword,
+    redactAreas,
+    redactMutation,
     removeMetadataMutation,
     selection.selectedDrafts,
     signForm,
@@ -701,9 +887,14 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
     splitMutation,
     targetSelection.selectedDrafts,
     targetSelection.selectedKeys.size,
+    toCsvMutation,
+    toExcelMutation,
+    toHtmlMutation,
     toJpgApplyTo,
     toJpgMutation,
+    toPptxMutation,
     toWordMutation,
+    translateMutation,
     tool,
     watermarkForm,
     watermarkMutation,
@@ -856,6 +1047,44 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
         preview={preview}
         disabled={isProcessing}
       />
+    ) : tool === 'compress' ? (
+      <CompressPanel level={compressLevel} onChange={setCompressLevel} originalSize={document.size} />
+    ) : tool === 'crop' ? (
+      <CropPanel
+        value={cropForm}
+        onChange={updateCropForm}
+        totalPages={drafts.length}
+        activePage={drawPage}
+        hasRect={cropRect !== null}
+        onClearRect={() => setCropRect(null)}
+        disabled={isProcessing}
+      />
+    ) : tool === 'redact' ? (
+      <RedactPanel
+        areas={redactAreas}
+        onRemove={(index) => setRedactAreas((current) => current.filter((_, i) => i !== index))}
+        onClearAll={() => setRedactAreas([])}
+        onGoToPage={setDrawPage}
+        disabled={isProcessing}
+      />
+    ) : tool === 'translate' ? (
+      <TranslatePanel
+        value={translateForm}
+        onChange={updateTranslateForm}
+        disabled={isProcessing}
+        unavailable={translateUnavailable}
+      />
+    ) : tool === 'to-excel' || tool === 'to-csv' || tool === 'to-html' || tool === 'to-pptx' ? (
+      <ToolPanel tool={findTool(tool)}>
+        <p className="text-[12.5px] leading-relaxed text-ink-muted">
+          {tool === 'to-pptx'
+            ? 'Each page becomes one slide, as an image — the text stays in the PDF, not in editable slide boxes.'
+            : tool === 'to-html'
+              ? "Produces clean, readable HTML from the document's text — not the PDF re-wrapped in a viewer."
+              : 'Best-effort extraction of table-like rows and columns from the text layer. Works best on PDFs with clearly spaced columns.'}{' '}
+          Converts the whole document.
+        </p>
+      </ToolPanel>
     ) : (
       <ProtectPanel onPasswordReady={setProtectPassword} disabled={isProcessing} />
     );
@@ -885,7 +1114,7 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
                   key={definition.id}
                   type="button"
                   disabled={isProcessing}
-                  onClick={() => definition.tool && setTool(definition.tool)}
+                  onClick={() => definition.tool && selectTool(definition.tool)}
                   aria-current={isActive ? 'true' : undefined}
                   className={cn(
                     'flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors disabled:opacity-50',
@@ -904,7 +1133,7 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
           </div>
 
           <div className="hidden min-h-0 flex-1 overflow-y-auto px-3 py-4 lg:block">
-            <ToolRail active={tool} onSelect={setTool} disabled={isProcessing} />
+            <ToolRail active={tool} onSelect={selectTool} disabled={isProcessing} recent={recent} />
           </div>
         </aside>
 
@@ -976,6 +1205,35 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
               onClearSelection={targetSelection.clear}
               onPreviewError={leave}
             />
+          ) : tool === 'crop' ? (
+            <PageDrawWorkspace
+              totalPages={drafts.length}
+              activePage={drawPage}
+              onActivePageChange={setDrawPage}
+              preview={preview}
+              rectsForActivePage={cropRect ? [cropRect] : []}
+              onDraw={setCropRect}
+              variant="crop"
+              hint="Drag to draw a crop area. Drawing again replaces it."
+            />
+          ) : tool === 'redact' ? (
+            <PageDrawWorkspace
+              totalPages={drafts.length}
+              activePage={drawPage}
+              onActivePageChange={setDrawPage}
+              preview={preview}
+              rectsForActivePage={redactAreas
+                .filter((area) => area.page === drawPage)
+                .map(({ xFraction, yFraction, widthFraction, heightFraction }) => ({
+                  xFraction,
+                  yFraction,
+                  widthFraction,
+                  heightFraction,
+                }))}
+              onDraw={(rect) => setRedactAreas((current) => [...current, { ...rect, page: drawPage }])}
+              variant="redact"
+              hint="Drag to mark an area to redact on this page."
+            />
           ) : tool === 'merge' ? (
             <div className="mx-auto max-w-2xl p-4 sm:p-6">
               <div className="mb-4">
@@ -1036,9 +1294,10 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
               disabled={isProcessing}
             />
           ) : (
-            // metadata / protect / to-word: whole-document tools with nothing
-            // page-level to show, so the main area is a simple document
-            // summary instead of the page grid.
+            // metadata / protect / to-word / compress / translate /
+            // to-excel / to-csv / to-html / to-pptx: whole-document tools
+            // with nothing page-level to show, so the main area is a simple
+            // document summary instead of the page grid.
             <div className="mx-auto max-w-md p-4 pt-10 sm:p-6 sm:pt-16">
               <div className="rounded-lg border border-line bg-surface p-6 text-center">
                 <span
@@ -1058,7 +1317,13 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
                     ? 'Set a password on the left, then protect the document. Nobody will be able to open the result without it.'
                     : tool === 'to-word'
                       ? 'Convert this document to a Word file on the left. Text is preserved; original layout is not.'
-                      : 'Review this document’s metadata on the left, then remove it to download a cleaned copy.'}
+                      : tool === 'compress'
+                        ? 'Choose a compression level on the left, then compress. You’ll see the real before/after size before downloading.'
+                        : tool === 'translate'
+                          ? 'Choose languages on the left, then translate. This can take a little while for longer documents.'
+                          : tool === 'to-excel' || tool === 'to-csv' || tool === 'to-html' || tool === 'to-pptx'
+                            ? 'Set up the conversion on the left, then convert the whole document.'
+                            : 'Review this document’s metadata on the left, then remove it to download a cleaned copy.'}
                 </p>
               </div>
             </div>
@@ -1072,11 +1337,33 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
         onClose={closeResult}
         onContinueEditing={() => void handleContinueEditing()}
         onStartOver={leave}
-        allowContinueEditing={resultTool !== 'protect' && resultTool !== 'to-word'}
+        allowContinueEditing={
+          resultTool !== 'protect' &&
+          resultTool !== 'to-word' &&
+          resultTool !== 'to-excel' &&
+          resultTool !== 'to-csv' &&
+          resultTool !== 'to-html' &&
+          resultTool !== 'to-pptx'
+        }
+        title={
+          resultTool === 'to-excel' || resultTool === 'to-csv'
+            ? 'Your spreadsheet is ready'
+            : resultTool === 'to-html'
+              ? 'Your HTML file is ready'
+              : resultTool === 'to-pptx'
+                ? 'Your presentation is ready'
+                : resultTool === 'translate'
+                  ? 'Your translated PDF is ready'
+                  : undefined
+        }
         note={
           resultTool === 'protect' ? (
             <div className="rounded-md border border-warning/25 bg-warning-soft px-3 py-2.5 text-[12.5px] leading-relaxed text-warning">
               This file now needs a password to open. Keep it safe — it can’t be recovered.
+            </div>
+          ) : resultTool === 'redact' ? (
+            <div className="rounded-md border border-warning/25 bg-warning-soft px-3 py-2.5 text-[12.5px] leading-relaxed text-warning">
+              Redacted pages were rebuilt as images — their text is no longer selectable, by design.
             </div>
           ) : undefined
         }
@@ -1093,6 +1380,8 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
         filename={document.filename}
         onClose={() => setOcrResult(null)}
       />
+
+      <CompressResultDialog result={compressResult} onClose={() => setCompressResult(null)} />
 
       <Modal
         open={confirmExit}

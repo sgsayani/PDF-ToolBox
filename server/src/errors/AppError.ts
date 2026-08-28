@@ -27,6 +27,7 @@ export const ErrorCode = {
   EMAIL_TAKEN: 'EMAIL_TAKEN',
   USAGE_LIMIT_EXCEEDED: 'USAGE_LIMIT_EXCEEDED',
   ACCOUNTS_UNAVAILABLE: 'ACCOUNTS_UNAVAILABLE',
+  TRANSLATION_UNAVAILABLE: 'TRANSLATION_UNAVAILABLE',
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

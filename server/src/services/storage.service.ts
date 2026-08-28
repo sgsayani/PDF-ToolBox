@@ -12,7 +12,18 @@ import { logger } from '../utils/logger.js';
  * adds outputs (and, for images, inputs) that genuinely are a different kind
  * of file, so the store has to know what it's holding rather than assume PDF.
  */
-export const STORED_FILE_KINDS = ['pdf', 'jpg', 'png', 'txt', 'docx', 'zip'] as const;
+export const STORED_FILE_KINDS = [
+  'pdf',
+  'jpg',
+  'png',
+  'txt',
+  'docx',
+  'zip',
+  'html',
+  'csv',
+  'xlsx',
+  'pptx',
+] as const;
 export type StoredFileKind = (typeof STORED_FILE_KINDS)[number];
 
 /** Exported so other permanent-file code paths (saved files) use the exact same mapping. */
@@ -23,6 +34,10 @@ export const CONTENT_TYPES: Record<StoredFileKind, string> = {
   txt: 'text/plain; charset=utf-8',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   zip: 'application/zip',
+  html: 'text/html; charset=utf-8',
+  csv: 'text/csv; charset=utf-8',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 };
 
 /** Metadata for one short-lived working copy of a file. */

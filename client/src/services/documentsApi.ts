@@ -11,4 +11,24 @@ export const documentsApi = {
   toPdf(file: File, options?: UploadOptions): Promise<OperationResponse> {
     return uploadFile<OperationResponse>('/documents/to-pdf', file, options);
   },
+
+  excelToPdf(file: File, options?: UploadOptions): Promise<OperationResponse> {
+    return uploadFile<OperationResponse>('/documents/excel-to-pdf', file, options);
+  },
+
+  csvToPdf(file: File, options?: UploadOptions): Promise<OperationResponse> {
+    return uploadFile<OperationResponse>('/documents/csv-to-pdf', file, options);
+  },
+
+  pptxToPdf(file: File, options?: UploadOptions): Promise<OperationResponse> {
+    return uploadFile<OperationResponse>('/documents/pptx-to-pdf', file, options);
+  },
+
+  htmlToPdf(file: File, options?: UploadOptions): Promise<OperationResponse> {
+    return uploadFile<OperationResponse>('/documents/html-to-pdf', file, options);
+  },
+
+  textToPdf(file: File, options?: UploadOptions): Promise<OperationResponse> {
+    return uploadFile<OperationResponse>('/documents/text-to-pdf', file, options);
+  },
 };

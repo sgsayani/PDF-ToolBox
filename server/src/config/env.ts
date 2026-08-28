@@ -46,6 +46,13 @@ const envSchema = z.object({
 
   /** Directory for saved files. Unlike `STORAGE_DIR`, never purged or swept — files live until deleted. */
   SAVED_STORAGE_DIR: z.string().default('.tmp/saved'),
+
+  /**
+   * Optional. Powers "Translate PDF" via DeepL's API. Leave unset and the
+   * feature stays visible in the UI but responds with a clear "not
+   * configured" message instead of doing anything — never a fake translation.
+   */
+  DEEPL_API_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

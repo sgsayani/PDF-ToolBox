@@ -26,6 +26,8 @@ interface ResultDialogProps {
   allowContinueEditing?: boolean;
   /** Extra context shown below the file summary, e.g. a password reminder. */
   note?: ReactNode;
+  /** Defaults to "Your PDF is ready" — override for a result that isn't a PDF. */
+  title?: string;
 }
 
 /**
@@ -42,6 +44,7 @@ export function ResultDialog({
   onClose,
   allowContinueEditing = true,
   note,
+  title = 'Your PDF is ready',
 }: ResultDialogProps) {
   const { user } = useAuth();
   const toast = useToast();
@@ -66,7 +69,7 @@ export function ResultDialog({
     <Modal
       open={result !== null}
       onClose={onClose}
-      title="Your PDF is ready"
+      title={title}
       size="md"
       footer={
         result && (

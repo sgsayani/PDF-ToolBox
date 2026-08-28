@@ -19,6 +19,19 @@ export const PDF_OPERATIONS = [
   'remove-password',
   'ocr',
   'scanner-cleanup',
+  'excel-to-pdf',
+  'csv-to-pdf',
+  'pptx-to-pdf',
+  'html-to-pdf',
+  'text-to-pdf',
+  'to-excel',
+  'to-csv',
+  'to-pptx',
+  'to-html',
+  'compress',
+  'crop',
+  'redact',
+  'translate',
 ] as const;
 
 export type PdfOperation = (typeof PDF_OPERATIONS)[number];

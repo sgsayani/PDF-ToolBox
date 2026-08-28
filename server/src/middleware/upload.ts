@@ -189,3 +189,83 @@ export function singleDocxUpload(): RequestHandler {
     });
   };
 }
+
+/**
+ * Builds a single-file uploader scoped to one document type — the same
+ * shape as `singlePdfUpload`/`singleImageUpload`/`singleDocxUpload` above,
+ * generalised so each of the "Convert to PDF" source formats doesn't need
+ * its own hand-written multer config.
+ */
+export function createSingleFileUpload(options: {
+  extensions: string[];
+  mimeTypes: string[];
+  label: string;
+}): () => RequestHandler {
+  const extensionSet = new Set(options.extensions);
+  const mimeTypeSet = new Set([...options.mimeTypes, 'application/octet-stream', 'binary/octet-stream']);
+
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: env.maxFileSizeBytes, files: 1, fields: 8, fieldSize: 4096 },
+    fileFilter: (_req, file, callback) => {
+      const extension = path.extname(file.originalname).toLowerCase();
+
+      if (!extensionSet.has(extension) || !mimeTypeSet.has(file.mimetype)) {
+        callback(
+          AppError.badRequest(ErrorCode.UNSUPPORTED_FILE_TYPE, `Only ${options.label} files can be uploaded.`, {
+            details: { received: extension || file.mimetype },
+          }),
+        );
+        return;
+      }
+
+      callback(null, true);
+    },
+  });
+
+  return () => {
+    const handler = upload.single('file');
+    return (req: Request, res: Response, next: NextFunction) => {
+      handler(req, res, (error: unknown) => {
+        if (error) {
+          next(toAppError(error));
+          return;
+        }
+        next();
+      });
+    };
+  };
+}
+
+export const singleExcelUpload = createSingleFileUpload({
+  extensions: ['.xlsx', '.xls'],
+  mimeTypes: [
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel',
+  ],
+  label: 'Excel (.xlsx, .xls)',
+});
+
+export const singleCsvUpload = createSingleFileUpload({
+  extensions: ['.csv'],
+  mimeTypes: ['text/csv', 'application/vnd.ms-excel', 'text/plain'],
+  label: 'CSV',
+});
+
+export const singlePptxUpload = createSingleFileUpload({
+  extensions: ['.pptx'],
+  mimeTypes: ['application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+  label: 'PowerPoint (.pptx)',
+});
+
+export const singleHtmlUpload = createSingleFileUpload({
+  extensions: ['.html', '.htm'],
+  mimeTypes: ['text/html'],
+  label: 'HTML',
+});
+
+export const singleTextUpload = createSingleFileUpload({
+  extensions: ['.txt'],
+  mimeTypes: ['text/plain'],
+  label: 'text (.txt)',
+});

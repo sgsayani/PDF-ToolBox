@@ -1,8 +1,10 @@
 import { z } from 'zod';
 
 import { env } from '../config/env.js';
+import { COMPRESSION_LEVELS } from '../services/compress.service.js';
 import { OCR_LANGUAGES } from '../services/ocr.service.js';
 import { POSITION_PRESETS } from '../services/pdf.service.js';
+import { TRANSLATE_LANGUAGES } from '../services/translation.service.js';
 
 /** Opaque storage id: 16 random bytes, hex encoded. */
 export const fileIdSchema = z
@@ -186,6 +188,48 @@ export const ocrSchema = z.object({
   generateSearchablePdf: z.boolean().default(true),
 });
 
+export const compressSchema = z.object({
+  fileId: fileIdSchema,
+  level: z.enum(COMPRESSION_LEVELS, { errorMap: () => ({ message: 'Choose a compression level.' }) }),
+});
+
+/** A fraction of the page's width or height, measured from the top-left corner. */
+const fractionSchema = z.number().min(0).max(1);
+
+const rectSchema = z.object({
+  xFraction: fractionSchema,
+  yFraction: fractionSchema,
+  widthFraction: fractionSchema.refine((value) => value > 0, 'The crop area is too small.'),
+  heightFraction: fractionSchema.refine((value) => value > 0, 'The crop area is too small.'),
+});
+
+export const cropSchema = z.object({
+  fileId: fileIdSchema,
+  pages: applyToPagesSchema.default('all'),
+  rect: rectSchema,
+});
+
+export const redactSchema = z.object({
+  fileId: fileIdSchema,
+  areas: z
+    .array(rectSchema.extend({ page: pageNumberSchema }))
+    .min(1, 'Add at least one redaction area.')
+    .max(500, 'Too many redaction areas.'),
+});
+
+export const toExcelSchema = z.object({ fileId: fileIdSchema });
+export const toCsvSchema = z.object({ fileId: fileIdSchema });
+export const toHtmlSchema = z.object({ fileId: fileIdSchema });
+export const toPptxSchema = z.object({ fileId: fileIdSchema });
+
+export const translateSchema = z.object({
+  fileId: fileIdSchema,
+  targetLang: z.enum(TRANSLATE_LANGUAGES, { errorMap: () => ({ message: 'Choose a target language.' }) }),
+  // Omitted entirely lets DeepL auto-detect — not `.default()`, since "no
+  // preference" and "detect" are the same thing here, not a fallback value.
+  sourceLang: z.enum(TRANSLATE_LANGUAGES).optional(),
+});
+
 export const scannerCleanupSchema = z.object({
   fileId: fileIdSchema,
   pages: applyToPagesSchema.default('all'),
@@ -212,3 +256,11 @@ export type FillFormInput = z.infer<typeof fillFormSchema>;
 export type RemovePasswordFieldsInput = z.infer<typeof removePasswordFieldsSchema>;
 export type OcrInput = z.infer<typeof ocrSchema>;
 export type ScannerCleanupInput = z.infer<typeof scannerCleanupSchema>;
+export type CompressInput = z.infer<typeof compressSchema>;
+export type CropInput = z.infer<typeof cropSchema>;
+export type RedactInput = z.infer<typeof redactSchema>;
+export type TranslateInput = z.infer<typeof translateSchema>;
+export type ToExcelInput = z.infer<typeof toExcelSchema>;
+export type ToCsvInput = z.infer<typeof toCsvSchema>;
+export type ToHtmlInput = z.infer<typeof toHtmlSchema>;
+export type ToPptxInput = z.infer<typeof toPptxSchema>;

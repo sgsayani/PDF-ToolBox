@@ -24,7 +24,8 @@ export type ApiErrorCode =
   | 'INVALID_CREDENTIALS'
   | 'EMAIL_TAKEN'
   | 'USAGE_LIMIT_EXCEEDED'
-  | 'ACCOUNTS_UNAVAILABLE';
+  | 'ACCOUNTS_UNAVAILABLE'
+  | 'TRANSLATION_UNAVAILABLE';
 
 interface ApiErrorBody {
   error?: { code?: string; message?: string; details?: Record<string, unknown> };

@@ -3,20 +3,28 @@ import type { Request, Response } from 'express';
 import { isAppError } from '../errors/AppError.js';
 import type { PdfOperation } from '../models/Job.js';
 import { cleanupService } from '../services/cleanup.service.js';
+import { compressService } from '../services/compress.service.js';
+import { cropService } from '../services/crop.service.js';
 import { formService } from '../services/form.service.js';
 import { jobService, type FileSummary } from '../services/job.service.js';
 import { pdfService } from '../services/pdf.service.js';
+import { redactService } from '../services/redact.service.js';
 import { storageService, type StoredFile } from '../services/storage.service.js';
+import { translatePdfService } from '../services/translatePdf.service.js';
 import { withSuffix } from '../utils/filename.js';
 import type {
+  CompressInput,
+  CropInput,
   FillFormInput,
   MergeInput,
   OrganizeInput,
   PageNumbersInput,
+  RedactInput,
   RemoveMetadataInput,
   ScannerCleanupInput,
   SignInput,
   SplitInput,
+  TranslateInput,
   WatermarkInput,
 } from '../validators/pdf.validators.js';
 import { toFileResource } from './files.controller.js';
@@ -216,5 +224,127 @@ export const pdfController = {
       ) => cleanupService.clean(data!, { pages, grayscale, brightness, contrast, rotate, denoise, cleanBackground }),
       outputName: ([file]) => withSuffix(file!.filename, 'enhanced'),
     });
+  },
+
+  crop: async (req: Request, res: Response): Promise<void> => {
+    const body = req.body as CropInput;
+    await executeOperation(req, res, body, {
+      operation: 'crop',
+      inputIds: ({ fileId }) => [fileId],
+      transform: ([data], { pages, rect }) => cropService.crop(data!, { pages, rect }),
+      outputName: ([file]) => withSuffix(file!.filename, 'cropped'),
+    });
+  },
+
+  redact: async (req: Request, res: Response): Promise<void> => {
+    const body = req.body as RedactInput;
+    await executeOperation(req, res, body, {
+      operation: 'redact',
+      inputIds: ({ fileId }) => [fileId],
+      transform: ([data], { areas }) => redactService.redact(data!, areas),
+      outputName: ([file]) => withSuffix(file!.filename, 'redacted'),
+    });
+  },
+
+  /**
+   * Compression and translation both return more than a stored file — sizes
+   * for one, detected language for the other — so neither fits
+   * `executeOperation`'s fixed response shape; same lifecycle by hand.
+   */
+  compress: async (req: Request, res: Response): Promise<void> => {
+    const { fileId, level } = req.body as CompressInput;
+    const startedAt = Date.now();
+    let input: StoredFile | undefined;
+
+    try {
+      input = storageService.get(fileId);
+      const data = await storageService.read(fileId);
+
+      const result = await compressService.compress(data, level);
+      const metadata = await pdfService.inspect(result.output);
+
+      const stored = await storageService.save({
+        data: result.output,
+        filename: withSuffix(input.filename, 'compressed'),
+        pageCount: metadata.pageCount,
+      });
+
+      const durationMs = Date.now() - startedAt;
+
+      jobService.record({
+        operation: 'compress',
+        status: 'succeeded',
+        inputs: [summarise(input)],
+        output: summarise(stored),
+        durationMs,
+        userId: req.user?.id,
+      });
+
+      res.status(200).json({
+        operation: 'compress',
+        file: toFileResource(stored),
+        originalSize: result.originalSize,
+        compressedSize: result.compressedSize,
+        reduced: result.reduced,
+        durationMs,
+      });
+    } catch (error) {
+      jobService.record({
+        operation: 'compress',
+        status: 'failed',
+        inputs: input ? [summarise(input)] : [],
+        durationMs: Date.now() - startedAt,
+        errorCode: isAppError(error) ? error.code : 'INTERNAL_ERROR',
+        userId: req.user?.id,
+      });
+      throw error;
+    }
+  },
+
+  translate: async (req: Request, res: Response): Promise<void> => {
+    const { fileId, targetLang, sourceLang } = req.body as TranslateInput;
+    const startedAt = Date.now();
+    let input: StoredFile | undefined;
+
+    try {
+      input = storageService.get(fileId);
+      const data = await storageService.read(fileId);
+
+      const result = await translatePdfService.translate(data, targetLang, sourceLang);
+
+      const stored = await storageService.save({
+        data: result.output,
+        filename: withSuffix(input.filename, `translated-${targetLang.toLowerCase()}`),
+        pageCount: result.pageCount,
+      });
+
+      const durationMs = Date.now() - startedAt;
+
+      jobService.record({
+        operation: 'translate',
+        status: 'succeeded',
+        inputs: [summarise(input)],
+        output: summarise(stored),
+        durationMs,
+        userId: req.user?.id,
+      });
+
+      res.status(200).json({
+        operation: 'translate',
+        file: toFileResource(stored),
+        detectedSourceLang: result.detectedSourceLang,
+        durationMs,
+      });
+    } catch (error) {
+      jobService.record({
+        operation: 'translate',
+        status: 'failed',
+        inputs: input ? [summarise(input)] : [],
+        durationMs: Date.now() - startedAt,
+        errorCode: isAppError(error) ? error.code : 'INTERNAL_ERROR',
+        userId: req.user?.id,
+      });
+      throw error;
+    }
   },
 };

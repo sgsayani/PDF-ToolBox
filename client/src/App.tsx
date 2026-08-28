@@ -6,7 +6,15 @@ import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider } from './hooks/useAuth';
 import { WorkspaceDocumentProvider } from './hooks/useWorkspaceDocument';
 import { SiteLayout } from './layouts/SiteLayout';
+import {
+  CSV_TO_PDF_CONFIG,
+  EXCEL_TO_PDF_CONFIG,
+  HTML_TO_PDF_CONFIG,
+  POWERPOINT_TO_PDF_CONFIG,
+  TEXT_TO_PDF_CONFIG,
+} from './lib/convertToPdfConfigs';
 import { AccountPage } from './pages/AccountPage';
+import { ConvertToPdfPage } from './pages/ConvertToPdfPage';
 import { ImagesToPdfPage } from './pages/ImagesToPdfPage';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
@@ -42,6 +50,14 @@ export function App() {
               <Route path="/workspace" element={<WorkspacePage />} />
               <Route path="/images-to-pdf" element={<ImagesToPdfPage />} />
               <Route path="/word-to-pdf" element={<WordToPdfPage />} />
+              <Route path="/excel-to-pdf" element={<ConvertToPdfPage config={EXCEL_TO_PDF_CONFIG} />} />
+              <Route path="/csv-to-pdf" element={<ConvertToPdfPage config={CSV_TO_PDF_CONFIG} />} />
+              <Route
+                path="/powerpoint-to-pdf"
+                element={<ConvertToPdfPage config={POWERPOINT_TO_PDF_CONFIG} />}
+              />
+              <Route path="/html-to-pdf" element={<ConvertToPdfPage config={HTML_TO_PDF_CONFIG} />} />
+              <Route path="/text-to-pdf" element={<ConvertToPdfPage config={TEXT_TO_PDF_CONFIG} />} />
               <Route path="/remove-password" element={<RemovePasswordPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
