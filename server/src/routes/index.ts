@@ -4,6 +4,8 @@ import { env } from '../config/env.js';
 import { isDatabaseConnected } from '../config/database.js';
 import { jobService } from '../services/job.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { accountRouter } from './account.routes.js';
+import { authRouter } from './auth.routes.js';
 import { documentsRouter } from './documents.routes.js';
 import { filesRouter } from './files.routes.js';
 import { imagesRouter } from './images.routes.js';
@@ -18,6 +20,7 @@ apiRouter.get('/health', (_req, res) => {
     status: 'ok',
     uptimeSeconds: Math.round(process.uptime()),
     historyEnabled: isDatabaseConnected(),
+    accountsEnabled: isDatabaseConnected(),
     limits: {
       maxFileSizeMb: env.MAX_FILE_SIZE_MB,
       maxFilesPerRequest: env.MAX_FILES_PER_REQUEST,
@@ -39,3 +42,5 @@ apiRouter.use('/pdf', pdfRouter);
 apiRouter.use('/security', securityRouter);
 apiRouter.use('/images', imagesRouter);
 apiRouter.use('/documents', documentsRouter);
+apiRouter.use('/auth', authRouter);
+apiRouter.use('/account', accountRouter);

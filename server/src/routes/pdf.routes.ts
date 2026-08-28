@@ -4,6 +4,7 @@ import { convertController } from '../controllers/convert.controller.js';
 import { ocrController } from '../controllers/ocr.controller.js';
 import { pdfController } from '../controllers/pdf.controller.js';
 import { processingRateLimiter } from '../middleware/rateLimit.js';
+import { enforceUsageLimit } from '../middleware/usageLimit.js';
 import { validateBody } from '../middleware/validate.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import {
@@ -24,6 +25,8 @@ import {
 export const pdfRouter = Router();
 
 pdfRouter.use(processingRateLimiter);
+// A no-op for anonymous requests — only checks a plan's daily allowance once a session is present.
+pdfRouter.use(enforceUsageLimit());
 
 /**
  * Each operation takes the id of an already-uploaded file plus its options and

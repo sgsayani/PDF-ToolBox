@@ -48,11 +48,13 @@ export function summarise(file: StoredFile): FileSummary {
  * `images.controller.ts`.
  */
 export async function executeOperation<TBody>(
+  req: Request,
   res: Response,
   body: TBody,
   definition: OperationDefinition<TBody>,
 ): Promise<void> {
   const startedAt = Date.now();
+  const userId = req.user?.id;
   let inputs: StoredFile[] = [];
 
   try {
@@ -80,6 +82,7 @@ export async function executeOperation<TBody>(
       inputs: inputs.map(summarise),
       output: summarise(stored),
       durationMs,
+      userId,
     });
 
     res.status(200).json({
@@ -94,6 +97,7 @@ export async function executeOperation<TBody>(
       inputs: inputs.map(summarise),
       durationMs: Date.now() - startedAt,
       errorCode: isAppError(error) ? error.code : 'INTERNAL_ERROR',
+      userId,
     });
     throw error;
   }
@@ -107,7 +111,7 @@ export const pdfController = {
    */
   organize: async (req: Request, res: Response): Promise<void> => {
     const body = req.body as OrganizeInput;
-    await executeOperation(res, body, {
+    await executeOperation(req, res, body, {
       operation: 'organize',
       inputIds: ({ fileId }) => [fileId],
       transform: ([data], { pages }) => pdfService.organize(data!, pages),
@@ -121,7 +125,7 @@ export const pdfController = {
    */
   split: async (req: Request, res: Response): Promise<void> => {
     const body = req.body as SplitInput;
-    await executeOperation(res, body, {
+    await executeOperation(req, res, body, {
       operation: 'split',
       inputIds: ({ fileId }) => [fileId],
       transform: ([data], { pages }) => pdfService.organize(data!, pages),
@@ -131,7 +135,7 @@ export const pdfController = {
 
   merge: async (req: Request, res: Response): Promise<void> => {
     const body = req.body as MergeInput;
-    await executeOperation(res, body, {
+    await executeOperation(req, res, body, {
       operation: 'merge',
       inputIds: ({ fileIds }) => fileIds,
       transform: (data) => pdfService.merge(data),
@@ -141,7 +145,7 @@ export const pdfController = {
 
   watermark: async (req: Request, res: Response): Promise<void> => {
     const body = req.body as WatermarkInput;
-    await executeOperation(res, body, {
+    await executeOperation(req, res, body, {
       operation: 'watermark',
       inputIds: ({ fileId }) => [fileId],
       transform: ([data], { text, position, opacity, fontSize, pages }) =>
@@ -152,7 +156,7 @@ export const pdfController = {
 
   pageNumbers: async (req: Request, res: Response): Promise<void> => {
     const body = req.body as PageNumbersInput;
-    await executeOperation(res, body, {
+    await executeOperation(req, res, body, {
       operation: 'page-numbers',
       inputIds: ({ fileId }) => [fileId],
       transform: ([data], { position, startNumber, pages }) =>
@@ -163,7 +167,7 @@ export const pdfController = {
 
   removeMetadata: async (req: Request, res: Response): Promise<void> => {
     const body = req.body as RemoveMetadataInput;
-    await executeOperation(res, body, {
+    await executeOperation(req, res, body, {
       operation: 'remove-metadata',
       inputIds: ({ fileId }) => [fileId],
       transform: ([data]) => pdfService.removeMetadata(data!),
@@ -173,7 +177,7 @@ export const pdfController = {
 
   sign: async (req: Request, res: Response): Promise<void> => {
     const body = req.body as SignInput;
-    await executeOperation(res, body, {
+    await executeOperation(req, res, body, {
       operation: 'sign',
       inputIds: ({ fileId }) => [fileId],
       transform: ([data], { page, position, widthPercent, image }) =>
@@ -189,7 +193,7 @@ export const pdfController = {
    */
   fillForm: async (req: Request, res: Response): Promise<void> => {
     const body = req.body as FillFormInput;
-    await executeOperation(res, body, {
+    await executeOperation(req, res, body, {
       operation: 'fill-form',
       inputIds: ({ fileId }) => [fileId],
       transform: ([data], { values }) => formService.fill(data!, values),
@@ -203,7 +207,7 @@ export const pdfController = {
    */
   cleanup: async (req: Request, res: Response): Promise<void> => {
     const body = req.body as ScannerCleanupInput;
-    await executeOperation(res, body, {
+    await executeOperation(req, res, body, {
       operation: 'scanner-cleanup',
       inputIds: ({ fileId }) => [fileId],
       transform: (

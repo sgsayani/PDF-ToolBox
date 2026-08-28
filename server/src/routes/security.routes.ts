@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { securityController } from '../controllers/security.controller.js';
 import { processingRateLimiter } from '../middleware/rateLimit.js';
 import { singlePdfUpload } from '../middleware/upload.js';
+import { enforceUsageLimit } from '../middleware/usageLimit.js';
 import { validateBody } from '../middleware/validate.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { protectSchema, removePasswordFieldsSchema } from '../validators/pdf.validators.js';
@@ -10,6 +11,7 @@ import { protectSchema, removePasswordFieldsSchema } from '../validators/pdf.val
 export const securityRouter = Router();
 
 securityRouter.use(processingRateLimiter);
+securityRouter.use(enforceUsageLimit());
 
 /**
  * Kept separate from `pdfRouter`: encrypting a document is not a content

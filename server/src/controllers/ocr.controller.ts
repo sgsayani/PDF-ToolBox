@@ -45,6 +45,7 @@ export const ocrController = {
         inputs: [summarise(input)],
         output: stored ? summarise(stored) : null,
         durationMs,
+        userId: req.user?.id,
       });
 
       res.status(200).json({
@@ -62,6 +63,7 @@ export const ocrController = {
         inputs: input ? [summarise(input)] : [],
         durationMs: Date.now() - startedAt,
         errorCode: isAppError(error) ? error.code : 'INTERNAL_ERROR',
+        userId: req.user?.id,
       });
       throw error;
     }

@@ -1,11 +1,15 @@
-import type { ReactNode } from 'react';
-import { CheckCircle2, Download, FilePlus2, PenLine } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { CheckCircle2, Download, FilePlus2, PenLine, Save } from 'lucide-react';
 
+import { useAuth } from '../../hooks/useAuth';
 import { formatBytes, formatPageCount } from '../../lib/format';
+import { accountApi } from '../../services/accountApi';
+import { ApiError } from '../../services/apiClient';
 import { pdfApi } from '../../services/pdfApi';
 import type { ApiFile } from '../../types';
 import { Button, buttonStyles } from '../ui/Button';
 import { Modal } from '../ui/Modal';
+import { useToast } from '../ui/Toast';
 
 interface ResultDialogProps {
   result: ApiFile | null;
@@ -39,6 +43,25 @@ export function ResultDialog({
   allowContinueEditing = true,
   note,
 }: ResultDialogProps) {
+  const { user } = useAuth();
+  const toast = useToast();
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveToAccount = async () => {
+    if (!result) return;
+    setIsSaving(true);
+    try {
+      await accountApi.saveFile(result.id);
+      setSavedId(result.id);
+      toast.success('Saved', 'Find it any time in your account under Saved files.');
+    } catch (error) {
+      toast.error('Could not save file', error instanceof ApiError ? error.message : 'Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <Modal
       open={result !== null}
@@ -51,6 +74,17 @@ export function ResultDialog({
             <Button variant="ghost" onClick={onStartOver} icon={<FilePlus2 />}>
               Start over
             </Button>
+            {user && (
+              <Button
+                variant="secondary"
+                onClick={() => void handleSaveToAccount()}
+                loading={isSaving}
+                disabled={savedId === result.id}
+                icon={<Save />}
+              >
+                {savedId === result.id ? 'Saved' : 'Save to account'}
+              </Button>
+            )}
             {allowContinueEditing && (
               <Button
                 variant="secondary"

@@ -48,6 +48,7 @@ export const securityController = {
         inputs: [summarise(input)],
         output: summarise(stored),
         durationMs,
+        userId: req.user?.id,
       });
 
       res.status(200).json({ operation: 'protect', file: toFileResource(stored), durationMs });
@@ -58,6 +59,7 @@ export const securityController = {
         inputs: input ? [summarise(input)] : [],
         durationMs: Date.now() - startedAt,
         errorCode: isAppError(error) ? error.code : 'INTERNAL_ERROR',
+        userId: req.user?.id,
       });
       throw error;
     }
@@ -101,6 +103,7 @@ export const securityController = {
         inputs: [inputSummary],
         output: { filename: stored.filename, size: stored.size, pageCount: stored.pageCount },
         durationMs,
+        userId: req.user?.id,
       });
 
       res.status(200).json({ operation: 'remove-password', file: toFileResource(stored), durationMs });
@@ -111,6 +114,7 @@ export const securityController = {
         inputs: [inputSummary],
         durationMs: Date.now() - startedAt,
         errorCode: isAppError(error) ? error.code : 'INTERNAL_ERROR',
+        userId: req.user?.id,
       });
       throw error;
     }

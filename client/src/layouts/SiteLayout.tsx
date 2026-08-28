@@ -1,5 +1,6 @@
 import { Link, Outlet } from 'react-router-dom';
 
+import { UserMenu } from '../components/auth/UserMenu';
 import { Logo } from '../components/ui/Logo';
 
 const NAV_LINKS = [
@@ -25,17 +26,21 @@ export function SiteLayout() {
             <Logo />
           </Link>
 
-          <nav aria-label="Main" className="hidden items-center gap-1 sm:flex">
-            {NAV_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="rounded-md px-3 py-1.5 text-[13.5px] font-medium text-ink-muted transition-colors hover:bg-raised hover:text-ink"
-              >
-                {link.label}
-              </a>
-            ))}
-          </nav>
+          <div className="flex items-center gap-4">
+            <nav aria-label="Main" className="hidden items-center gap-1 sm:flex">
+              {NAV_LINKS.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="rounded-md px-3 py-1.5 text-[13.5px] font-medium text-ink-muted transition-colors hover:bg-raised hover:text-ink"
+                >
+                  {link.label}
+                </a>
+              ))}
+            </nav>
+
+            <UserMenu />
+          </div>
         </div>
       </header>
 

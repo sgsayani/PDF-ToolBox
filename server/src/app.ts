@@ -1,9 +1,11 @@
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express, { type Express } from 'express';
 import helmet from 'helmet';
 
 import { env } from './config/env.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { attachUser } from './middleware/auth.js';
 import { apiRouter } from './routes/index.js';
 import { AppError, ErrorCode } from './errors/AppError.js';
 
@@ -33,13 +35,23 @@ export function createApp(): Express {
           AppError.badRequest(ErrorCode.VALIDATION_FAILED, 'This origin is not allowed.'),
         );
       },
-      methods: ['GET', 'POST', 'DELETE'],
+      // The session lives in a cookie, so the browser needs to know it's
+      // allowed to send one — safe here because `origin` above never
+      // reflects a wildcard, only the explicit allow-list.
+      credentials: true,
+      methods: ['GET', 'POST', 'PATCH', 'DELETE'],
       maxAge: 86_400,
     }),
   );
 
+  // Only used to read the session cookie; nothing here is a secret the
+  // client could tamper with undetected — the JWT it carries is signed.
+  app.use(cookieParser());
+
   // Operation payloads are small JSON documents; uploads use multipart instead.
   app.use(express.json({ limit: '256kb' }));
+
+  app.use(attachUser());
 
   app.use('/api', apiRouter);
 

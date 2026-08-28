@@ -25,6 +25,16 @@ export function formatFileCount(count: number): string {
   return `${count} ${count === 1 ? 'file' : 'files'}`;
 }
 
+/** An ISO timestamp as a short, locale-formatted date and time, e.g. `Aug 28, 2026, 2:45 PM`. */
+export function formatDateTime(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
+}
+
 /** Collapses sorted page numbers into a compact label: `1–3, 7, 10–12`. */
 export function formatPageList(pages: number[], limit = 6): string {
   const sorted = [...new Set(pages)].sort((a, b) => a - b);

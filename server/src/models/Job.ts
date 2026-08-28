@@ -48,13 +48,45 @@ const jobSchema = new Schema(
     durationMs: { type: Number, required: true },
     errorCode: { type: String, default: null },
     /**
-     * TTL index: history is operational telemetry, not a permanent record, so
-     * it expires on its own and cannot grow without bound.
+     * Set only when the request was authenticated. Anonymous jobs (the
+     * majority — this app needs no account to process a file) leave the
+     * field genuinely absent (no default here) rather than `null` — the TTL
+     * index below matches on the key being absent, not on its value.
      */
-    createdAt: { type: Date, default: Date.now, expires: env.isProduction ? '30d' : '7d' },
+    userId: { type: Schema.Types.ObjectId, ref: 'User' },
+    createdAt: { type: Date, default: Date.now },
   },
   { versionKey: false },
 );
+
+/**
+ * Anonymous jobs are operational telemetry and expire on their own so the
+ * collection can't grow without bound. A signed-in user's history is a
+ * feature they can see and manage, not telemetry — the partial filter keeps
+ * every job with a `userId` out of this TTL entirely, so nothing a person
+ * can see in their account ever disappears on a timer.
+ */
+jobSchema.index(
+  { createdAt: 1 },
+  {
+    expireAfterSeconds: env.isProduction ? 30 * 24 * 3600 : 7 * 24 * 3600,
+    partialFilterExpression: { userId: { $exists: false } },
+  },
+);
+
+/** A user's own history, newest first — the only query `account.controller.ts` runs. */
+jobSchema.index({ userId: 1, createdAt: -1 });
+
+jobSchema.set('toJSON', {
+  transform: (_doc, ret: Record<string, unknown>) => {
+    ret.id = String(ret._id);
+    delete ret._id;
+    // A history entry is always read back through a query already scoped to
+    // its owner — restating whose it is here would be redundant, not useful.
+    delete ret.userId;
+    return ret;
+  },
+});
 
 export type JobDocument = InferSchemaType<typeof jobSchema>;
 

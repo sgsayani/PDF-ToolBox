@@ -36,6 +36,16 @@ const envSchema = z.object({
   /** Requests per window, per IP, for the processing endpoints. */
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
   RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
+
+  /**
+   * Signs session tokens. Required in production; in development an
+   * insecure fallback is used (with a startup warning) so the app runs
+   * without extra setup.
+   */
+  JWT_SECRET: z.string().min(32).optional(),
+
+  /** Directory for saved files. Unlike `STORAGE_DIR`, never purged or swept — files live until deleted. */
+  SAVED_STORAGE_DIR: z.string().default('.tmp/saved'),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -48,19 +58,33 @@ if (!parsed.success) {
 }
 
 const raw = parsed.data;
+const isProduction = raw.NODE_ENV === 'production';
+
+if (isProduction && !raw.JWT_SECRET) {
+  throw new Error(
+    'JWT_SECRET must be set (32+ characters) in production — accounts cannot run without it.',
+  );
+}
+
+// A fixed, clearly-fake value in development only, so the app runs without
+// extra setup; every session it signs is worthless once the process ends.
+const DEV_ONLY_JWT_SECRET = 'dev-insecure-secret-do-not-use-in-production-00000000';
 
 export const env = {
   ...raw,
-  isProduction: raw.NODE_ENV === 'production',
+  isProduction,
   isTest: raw.NODE_ENV === 'test',
   corsOrigins: raw.CORS_ORIGIN.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean),
   storageDir: path.resolve(process.cwd(), raw.STORAGE_DIR),
+  savedStorageDir: path.resolve(process.cwd(), raw.SAVED_STORAGE_DIR),
   maxFileSizeBytes: raw.MAX_FILE_SIZE_MB * 1024 * 1024,
   fileTtlMs: raw.FILE_TTL_MINUTES * 60 * 1000,
   cleanupIntervalMs: raw.CLEANUP_INTERVAL_MINUTES * 60 * 1000,
   rateLimitWindowMs: raw.RATE_LIMIT_WINDOW_MINUTES * 60 * 1000,
+  jwtSecret: raw.JWT_SECRET ?? DEV_ONLY_JWT_SECRET,
+  usingDevJwtSecret: !raw.JWT_SECRET,
 } as const;
 
 export type Env = typeof env;

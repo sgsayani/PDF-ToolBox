@@ -3,12 +3,18 @@ import type { Server } from 'node:http';
 import { createApp } from './app.js';
 import { connectDatabase, disconnectDatabase } from './config/database.js';
 import { env } from './config/env.js';
+import { savedFileService } from './services/savedFile.service.js';
 import { storageService } from './services/storage.service.js';
 import { logger } from './utils/logger.js';
 
 async function bootstrap(): Promise<void> {
   await storageService.init();
+  await savedFileService.init();
   await connectDatabase();
+
+  if (env.usingDevJwtSecret) {
+    logger.warn('JWT_SECRET is not set — using an insecure development-only value.');
+  }
 
   const app = createApp();
   const server: Server = app.listen(env.PORT, () => {

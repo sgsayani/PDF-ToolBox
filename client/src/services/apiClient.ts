@@ -19,7 +19,12 @@ export type ApiErrorCode =
   | 'NOT_FOUND'
   | 'INTERNAL_ERROR'
   | 'NETWORK_ERROR'
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'AUTH_REQUIRED'
+  | 'INVALID_CREDENTIALS'
+  | 'EMAIL_TAKEN'
+  | 'USAGE_LIMIT_EXCEEDED'
+  | 'ACCOUNTS_UNAVAILABLE';
 
 interface ApiErrorBody {
   error?: { code?: string; message?: string; details?: Record<string, unknown> };
@@ -85,6 +90,10 @@ export async function requestJson<T>(path: string, init: RequestInit = {}): Prom
   try {
     response = await fetch(buildUrl(path), {
       ...init,
+      // The session lives in an httpOnly cookie; every request needs it
+      // sent, including cross-origin ones where a deployment serves the
+      // client and API from different hosts.
+      credentials: 'include',
       headers: {
         ...(init.body ? { 'Content-Type': 'application/json' } : {}),
         ...init.headers,
@@ -187,6 +196,7 @@ export function uploadFile<T>(path: string, file: File, options: UploadOptions =
     });
 
     request.open('POST', buildUrl(path));
+    request.withCredentials = true;
     // Generous: a large PDF on a slow connection still needs to get through.
     request.timeout = 5 * 60 * 1000;
     request.send(formData);

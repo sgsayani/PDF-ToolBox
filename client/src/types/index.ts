@@ -34,11 +34,58 @@ export interface OperationResponse {
 export interface HealthResponse {
   status: string;
   historyEnabled: boolean;
+  accountsEnabled: boolean;
   limits: {
     maxFileSizeMb: number;
     maxFilesPerRequest: number;
     fileTtlMinutes: number;
   };
+}
+
+// ---------------------------------------------------------------------------
+// Accounts
+// ---------------------------------------------------------------------------
+
+export type PlanId = 'free';
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  plan: PlanId;
+  createdAt: string;
+}
+
+export interface AuthResponse {
+  user: User;
+}
+
+export interface UsageResponse {
+  plan: PlanId;
+  limits: { maxProcessingPerDay: number; maxFileSizeMb: number };
+  usage: { processedToday: number; remainingToday: number };
+}
+
+/** One entry in a user's processing history — the same facts `/api/stats` aggregates, scoped to one account. */
+export interface HistoryEntry {
+  id: string;
+  operation: string;
+  status: 'succeeded' | 'failed';
+  inputs: { filename: string; size: number; pageCount: number }[];
+  output: { filename: string; size: number; pageCount: number } | null;
+  durationMs: number;
+  errorCode: string | null;
+  createdAt: string;
+}
+
+/** A file a user has chosen to keep past its normal expiry. */
+export interface SavedFileEntry {
+  id: string;
+  filename: string;
+  size: number;
+  pageCount: number;
+  kind: StoredFileKind;
+  createdAt: string;
 }
 
 export type PdfOperation =

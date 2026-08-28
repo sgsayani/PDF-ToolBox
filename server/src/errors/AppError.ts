@@ -22,6 +22,11 @@ export const ErrorCode = {
   RATE_LIMITED: 'RATE_LIMITED',
   NOT_FOUND: 'NOT_FOUND',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
+  AUTH_REQUIRED: 'AUTH_REQUIRED',
+  INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
+  EMAIL_TAKEN: 'EMAIL_TAKEN',
+  USAGE_LIMIT_EXCEEDED: 'USAGE_LIMIT_EXCEEDED',
+  ACCOUNTS_UNAVAILABLE: 'ACCOUNTS_UNAVAILABLE',
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -69,6 +74,22 @@ export class AppError extends Error {
 
   static unprocessable(code: ErrorCode, message: string, options?: AppErrorOptions): AppError {
     return new AppError(422, code, message, options);
+  }
+
+  static unauthorized(code: ErrorCode, message: string, options?: AppErrorOptions): AppError {
+    return new AppError(401, code, message, options);
+  }
+
+  static conflict(code: ErrorCode, message: string, options?: AppErrorOptions): AppError {
+    return new AppError(409, code, message, options);
+  }
+
+  static tooManyRequests(code: ErrorCode, message: string, options?: AppErrorOptions): AppError {
+    return new AppError(429, code, message, options);
+  }
+
+  static serviceUnavailable(code: ErrorCode, message: string, options?: AppErrorOptions): AppError {
+    return new AppError(503, code, message, options);
   }
 
   static internal(message: string, options?: AppErrorOptions): AppError {

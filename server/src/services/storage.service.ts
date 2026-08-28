@@ -15,7 +15,8 @@ import { logger } from '../utils/logger.js';
 export const STORED_FILE_KINDS = ['pdf', 'jpg', 'png', 'txt', 'docx', 'zip'] as const;
 export type StoredFileKind = (typeof STORED_FILE_KINDS)[number];
 
-const CONTENT_TYPES: Record<StoredFileKind, string> = {
+/** Exported so other permanent-file code paths (saved files) use the exact same mapping. */
+export const CONTENT_TYPES: Record<StoredFileKind, string> = {
   pdf: 'application/pdf',
   jpg: 'image/jpeg',
   png: 'image/png',

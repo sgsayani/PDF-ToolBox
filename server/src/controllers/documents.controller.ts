@@ -50,6 +50,7 @@ export const documentsController = {
         inputs: [inputSummary],
         output: { filename: stored.filename, size: stored.size, pageCount: stored.pageCount },
         durationMs,
+        userId: req.user?.id,
       });
 
       res.status(200).json({ operation: 'word-to-pdf', file: toFileResource(stored), durationMs });
@@ -60,6 +61,7 @@ export const documentsController = {
         inputs: [inputSummary],
         durationMs: Date.now() - startedAt,
         errorCode: isAppError(error) ? error.code : 'INTERNAL_ERROR',
+        userId: req.user?.id,
       });
       throw error;
     }

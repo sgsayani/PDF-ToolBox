@@ -15,6 +15,13 @@ export interface JobRecord {
   output?: FileSummary | null;
   durationMs: number;
   errorCode?: string | null;
+  /**
+   * Left `undefined` (never `null`) for an anonymous request — the field
+   * must be genuinely absent, not merely empty, for the Job model's partial
+   * TTL index to treat it as anonymous telemetry rather than a user's
+   * visible history.
+   */
+  userId?: string;
 }
 
 /**
@@ -35,12 +42,31 @@ export const jobService = {
       output: record.output ?? null,
       durationMs: record.durationMs,
       errorCode: record.errorCode ?? null,
+      // Only assigned when present — see the `userId` doc comment above.
+      ...(record.userId ? { userId: record.userId } : {}),
     }).catch((error: unknown) => {
       logger.warn('Failed to record job', {
         operation: record.operation,
         error: error instanceof Error ? error.message : String(error),
       });
     });
+  },
+
+  /** One user's own processing history, newest first. Never anyone else's. */
+  async history(userId: string, limit = 200) {
+    return Job.find({ userId }).sort({ createdAt: -1 }).limit(limit);
+  },
+
+  /** Deletes one history entry, only if it belongs to this user. */
+  async deleteOne(userId: string, jobId: string): Promise<boolean> {
+    const result = await Job.deleteOne({ _id: jobId, userId });
+    return result.deletedCount > 0;
+  },
+
+  /** Clears this user's entire history. */
+  async deleteAll(userId: string): Promise<number> {
+    const result = await Job.deleteMany({ userId });
+    return result.deletedCount ?? 0;
   },
 
   /** Aggregate counts per operation, used by the /api/stats endpoint. */

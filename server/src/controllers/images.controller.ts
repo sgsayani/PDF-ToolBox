@@ -47,7 +47,7 @@ export const imagesController = {
   /** Combines the given images, in order, into a single new PDF. */
   toPdf: async (req: Request, res: Response): Promise<void> => {
     const body = req.body as ImagesToPdfInput;
-    await executeOperation(res, body, {
+    await executeOperation(req, res, body, {
       operation: 'images-to-pdf',
       inputIds: ({ fileIds }) => fileIds,
       transform: (data, { fileIds }) =>
