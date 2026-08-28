@@ -1,15 +1,19 @@
 import { Router } from 'express';
 
 import { convertController } from '../controllers/convert.controller.js';
+import { ocrController } from '../controllers/ocr.controller.js';
 import { pdfController } from '../controllers/pdf.controller.js';
 import { processingRateLimiter } from '../middleware/rateLimit.js';
 import { validateBody } from '../middleware/validate.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import {
+  fillFormSchema,
   mergeSchema,
+  ocrSchema,
   organizeSchema,
   pageNumbersSchema,
   removeMetadataSchema,
+  scannerCleanupSchema,
   signSchema,
   splitSchema,
   toJpgSchema,
@@ -51,6 +55,7 @@ pdfRouter.post(
   asyncHandler(pdfController.removeMetadata),
 );
 pdfRouter.post('/sign', validateBody(signSchema), asyncHandler(pdfController.sign));
+pdfRouter.post('/fill-form', validateBody(fillFormSchema), asyncHandler(pdfController.fillForm));
 
 /**
  * Phase 3: conversions. `to-jpg` and `to-word` produce a file that isn't a
@@ -59,3 +64,16 @@ pdfRouter.post('/sign', validateBody(signSchema), asyncHandler(pdfController.sig
  */
 pdfRouter.post('/to-jpg', validateBody(toJpgSchema), asyncHandler(convertController.toJpg));
 pdfRouter.post('/to-word', validateBody(toWordSchema), asyncHandler(convertController.toWord));
+
+/**
+ * Phase 5: scanned-document tools. `ocr` returns extracted text plus an
+ * optional new stored file, so like `to-jpg`/`to-word` it has its own
+ * controller; `scanner-cleanup` produces a normal PDF and reuses the shared
+ * pipeline.
+ */
+pdfRouter.post('/ocr', validateBody(ocrSchema), asyncHandler(ocrController.run));
+pdfRouter.post(
+  '/scanner-cleanup',
+  validateBody(scannerCleanupSchema),
+  asyncHandler(pdfController.cleanup),
+);

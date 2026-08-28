@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 
 import { AppError, ErrorCode } from '../errors/AppError.js';
+import { formService } from '../services/form.service.js';
 import { pdfService } from '../services/pdf.service.js';
 import { renderService } from '../services/render.service.js';
 import { storageService, type StoredFile } from '../services/storage.service.js';
@@ -93,5 +94,13 @@ export const filesController = {
     const data = await storageService.read(id);
     const extracted = await renderService.extractText(data);
     res.status(200).json(extracted);
+  },
+
+  /** Reads a stored file's AcroForm fields without changing it. */
+  form: async (req: Request, res: Response): Promise<void> => {
+    const { id } = fileIdParamSchema.parse(req.params);
+    const data = await storageService.read(id);
+    const inspection = await formService.inspect(data);
+    res.status(200).json(inspection);
   },
 };

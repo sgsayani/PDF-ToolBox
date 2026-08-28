@@ -5,6 +5,7 @@ export type ApiErrorCode =
   | 'VALIDATION_FAILED'
   | 'INVALID_PDF'
   | 'ENCRYPTED_PDF'
+  | 'INCORRECT_PASSWORD'
   | 'FILE_TOO_LARGE'
   | 'TOO_MANY_FILES'
   | 'UNSUPPORTED_FILE_TYPE'
@@ -105,6 +106,8 @@ export async function requestJson<T>(path: string, init: RequestInit = {}): Prom
 export interface UploadOptions {
   onProgress?: (percent: number) => void;
   signal?: AbortSignal;
+  /** Extra multipart form fields sent alongside the file, e.g. a password. */
+  fields?: Record<string, string>;
 }
 
 /**
@@ -114,7 +117,7 @@ export interface UploadOptions {
  * upload progress, which matters for multi-megabyte PDFs on slow connections.
  */
 export function uploadFile<T>(path: string, file: File, options: UploadOptions = {}): Promise<T> {
-  const { onProgress, signal } = options;
+  const { onProgress, signal, fields } = options;
 
   return new Promise<T>((resolve, reject) => {
     if (signal?.aborted) {
@@ -124,6 +127,9 @@ export function uploadFile<T>(path: string, file: File, options: UploadOptions =
 
     const request = new XMLHttpRequest();
     const formData = new FormData();
+    if (fields) {
+      for (const [key, value] of Object.entries(fields)) formData.append(key, value);
+    }
     formData.append('file', file);
 
     const onAbort = () => request.abort();

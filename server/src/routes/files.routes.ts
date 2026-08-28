@@ -15,4 +15,5 @@ filesRouter.post('/', processingRateLimiter, singlePdfUpload(), asyncHandler(fil
 filesRouter.get('/:id/download', asyncHandler(filesController.download));
 filesRouter.get('/:id/metadata', asyncHandler(filesController.metadata));
 filesRouter.get('/:id/extracted-text', asyncHandler(filesController.extractedText));
+filesRouter.get('/:id/form', asyncHandler(filesController.form));
 filesRouter.delete('/:id', asyncHandler(filesController.remove));

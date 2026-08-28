@@ -1,8 +1,12 @@
 import type {
   ApiFile,
   ExtractedTextResponse,
+  FormFieldValue,
+  FormInspection,
   HealthResponse,
   ImageExportResponse,
+  OcrLanguage,
+  OcrResponse,
   OperationResponse,
   PageDraft,
   PageNumberPosition,
@@ -115,6 +119,22 @@ export const pdfApi = {
     });
   },
 
+  /**
+   * Unlocks a password-protected PDF in one request — the normal upload
+   * endpoint rejects encrypted files, so there's no existing `fileId` to
+   * reference here, and the file and its password travel together instead.
+   */
+  removePassword(
+    file: File,
+    password: string,
+    options?: Omit<UploadOptions, 'fields'>,
+  ): Promise<OperationResponse> {
+    return uploadFile<OperationResponse>('/security/remove-password', file, {
+      ...options,
+      fields: { password },
+    });
+  },
+
   /** Rasterizes the chosen pages to JPEG. Returns a ZIP too when there's more than one. */
   toJpg(fileId: string, pages: PageTarget): Promise<ImageExportResponse> {
     return requestJson<ImageExportResponse>('/pdf/to-jpg', {
@@ -135,6 +155,35 @@ export const pdfApi = {
     });
   },
 
+  /** Recognizes text on the given pages and, optionally, builds a searchable PDF. */
+  ocr(
+    fileId: string,
+    options: { pages: PageTarget; language: OcrLanguage; generateSearchablePdf: boolean },
+  ): Promise<OcrResponse> {
+    return requestJson<OcrResponse>('/pdf/ocr', {
+      method: 'POST',
+      body: JSON.stringify({ fileId, ...options }),
+    });
+  },
+
+  scannerCleanup(
+    fileId: string,
+    options: {
+      pages: PageTarget;
+      grayscale: boolean;
+      brightness: number;
+      contrast: number;
+      rotate: number;
+      denoise: boolean;
+      cleanBackground: boolean;
+    },
+  ): Promise<OperationResponse> {
+    return requestJson<OperationResponse>('/pdf/scanner-cleanup', {
+      method: 'POST',
+      body: JSON.stringify({ fileId, ...options }),
+    });
+  },
+
   /** Releases a working file. Best-effort: failures are not surfaced. */
   async release(fileId: string): Promise<void> {
     try {
@@ -151,6 +200,21 @@ export const pdfApi = {
       throw new Error(`Failed to fetch ${file.id}`);
     }
     return response.blob();
+  },
+
+  /** Reads a document's AcroForm fields for the fill-form tool. */
+  form(fileId: string): Promise<FormInspection> {
+    return requestJson<FormInspection>(`/files/${fileId}/form`);
+  },
+
+  fillForm(
+    fileId: string,
+    values: { name: string; value: FormFieldValue }[],
+  ): Promise<OperationResponse> {
+    return requestJson<OperationResponse>('/pdf/fill-form', {
+      method: 'POST',
+      body: JSON.stringify({ fileId, values }),
+    });
   },
 
   downloadUrl,

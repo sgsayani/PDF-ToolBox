@@ -18,7 +18,6 @@ export function ToJpgPanel({
   onApplyToChange,
   totalPages,
   selectedCount,
-  disabled,
 }: ToJpgPanelProps) {
   return (
     <ToolPanel tool={findTool('to-jpg')}>
@@ -30,7 +29,6 @@ export function ToJpgPanel({
           { value: 'all', label: `All ${formatPageCount(totalPages)}` },
           { value: 'selected', label: 'Selected pages' },
         ]}
-        disabled={disabled}
       />
 
       {applyTo === 'selected' && (

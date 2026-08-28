@@ -4,8 +4,11 @@ import { Route, Routes } from 'react-router-dom';
 import { ToastProvider } from './components/ui/Toast';
 import { WorkspaceDocumentProvider } from './hooks/useWorkspaceDocument';
 import { SiteLayout } from './layouts/SiteLayout';
+import { ImagesToPdfPage } from './pages/ImagesToPdfPage';
 import { LandingPage } from './pages/LandingPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { RemovePasswordPage } from './pages/RemovePasswordPage';
+import { WordToPdfPage } from './pages/WordToPdfPage';
 import { WorkspacePage } from './pages/WorkspacePage';
 
 const queryClient = new QueryClient({
@@ -29,8 +32,11 @@ export function App() {
               <Route index element={<LandingPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>
-            {/* The workspace supplies its own chrome. */}
+            {/* These supply their own chrome. */}
             <Route path="/workspace" element={<WorkspacePage />} />
+            <Route path="/images-to-pdf" element={<ImagesToPdfPage />} />
+            <Route path="/word-to-pdf" element={<WordToPdfPage />} />
+            <Route path="/remove-password" element={<RemovePasswordPage />} />
           </Routes>
         </WorkspaceDocumentProvider>
       </ToastProvider>

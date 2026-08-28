@@ -52,7 +52,8 @@ export type PdfOperation =
   | 'protect'
   | 'to-jpg'
   | 'to-word'
-  | 'images-to-pdf';
+  | 'images-to-pdf'
+  | 'scanner-cleanup';
 
 /** Response from converting PDF pages to JPEGs — one or many, plus an optional ZIP bundle. */
 export interface ImageExportResponse {
@@ -67,6 +68,36 @@ export interface ExtractedTextResponse {
   /** One entry per page, in order. Empty string for a page with no text. */
   pages: string[];
   hasText: boolean;
+}
+
+/** Languages OCR can recognize. A curated subset, not Tesseract's full list. */
+export const OCR_LANGUAGES = ['eng', 'fra', 'deu', 'spa', 'ita', 'por'] as const;
+export type OcrLanguage = (typeof OCR_LANGUAGES)[number];
+
+export const OCR_LANGUAGE_LABELS: Record<OcrLanguage, string> = {
+  eng: 'English',
+  fra: 'French',
+  deu: 'German',
+  spa: 'Spanish',
+  ita: 'Italian',
+  por: 'Portuguese',
+};
+
+/** One page's recognized text from OCR. */
+export interface OcrPageResult {
+  pageNumber: number;
+  text: string;
+  confidence: number;
+}
+
+/** Response from running OCR — always includes text; `file` is a searchable PDF, when requested. */
+export interface OcrResponse {
+  operation: 'ocr';
+  pages: OcrPageResult[];
+  meanConfidence: number;
+  lowQuality: boolean;
+  file: ApiFile | null;
+  durationMs: number;
 }
 
 /**
@@ -162,7 +193,32 @@ export type WorkspaceTool =
   | 'protect'
   | 'to-jpg'
   | 'extract-text'
-  | 'to-word';
+  | 'to-word'
+  | 'fill-form'
+  | 'ocr'
+  | 'scanner-cleanup';
+
+/** The field kinds `fill-form` actually fills; anything else is `'unsupported'`. */
+export type FormFieldType = 'text' | 'checkbox' | 'radio' | 'dropdown' | 'optionList' | 'unsupported';
+
+export interface FormFieldInfo {
+  name: string;
+  type: FormFieldType;
+  required: boolean;
+  readOnly: boolean;
+  options?: string[];
+  multiselect?: boolean;
+  currentValue?: string | boolean | string[];
+}
+
+export interface FormInspection {
+  pageCount: number;
+  hasFields: boolean;
+  fields: FormFieldInfo[];
+}
+
+/** One field's value as submitted for filling — matches `FormFieldInfo.currentValue`'s shape. */
+export type FormFieldValue = string | boolean | string[];
 
 /** An image queued for the images → PDF converter. */
 export interface ImageCandidate {

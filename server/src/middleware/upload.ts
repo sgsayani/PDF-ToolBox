@@ -140,3 +140,52 @@ export function singleImageUpload(): RequestHandler {
     });
   };
 }
+
+const DOCX_MIME_TYPES = new Set([
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  // Some browsers and OSes send a generic type for drag-and-dropped files.
+  'application/octet-stream',
+  'binary/octet-stream',
+]);
+
+/** Same shape as the other uploaders, scoped to `.docx` for Word-to-PDF. */
+const multerDocxUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: env.maxFileSizeBytes,
+    files: 1,
+    fields: 8,
+    fieldSize: 4096,
+  },
+  fileFilter: (_req, file, callback) => {
+    const extension = path.extname(file.originalname).toLowerCase();
+
+    // First-pass screening only. The authoritative check is the real parse
+    // performed in the service — never trust a client-supplied type.
+    if (extension !== '.docx' || !DOCX_MIME_TYPES.has(file.mimetype)) {
+      callback(
+        AppError.badRequest(ErrorCode.UNSUPPORTED_FILE_TYPE, 'Only .docx files can be uploaded.', {
+          details: { received: extension || file.mimetype },
+        }),
+      );
+      return;
+    }
+
+    callback(null, true);
+  },
+});
+
+/** Accepts a single .docx on the `file` field, normalising multer's errors. */
+export function singleDocxUpload(): RequestHandler {
+  const handler = multerDocxUpload.single('file');
+
+  return (req: Request, res: Response, next: NextFunction) => {
+    handler(req, res, (error: unknown) => {
+      if (error) {
+        next(toAppError(error));
+        return;
+      }
+      next();
+    });
+  };
+}

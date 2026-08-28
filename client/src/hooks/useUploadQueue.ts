@@ -31,8 +31,8 @@ interface UseUploadQueueOptions<T extends { file: ApiFile }> {
 
 let taskCounter = 0;
 
-const defaultUploadFn = (file: File, options: UploadOptions) =>
-  pdfApi.upload(file, options) as Promise<UploadResponse>;
+const defaultUploadFn = (file: File, options: UploadOptions): Promise<UploadResponse> =>
+  pdfApi.upload(file, options);
 
 /**
  * Manages a queue of file uploads with per-file progress, cancellation and

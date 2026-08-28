@@ -18,6 +18,13 @@ const ACCEPTED_IMAGE_MIME_TYPES = new Set([
 ]);
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png'];
 
+const ACCEPTED_DOCX_MIME_TYPES = new Set([
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/octet-stream',
+  'binary/octet-stream',
+  '',
+]);
+
 /**
  * Client-side pre-flight for a chosen file.
  *
@@ -59,6 +66,24 @@ export function validateImageFile(file: File, maxBytes: number): string | null {
   }
   if (!ACCEPTED_IMAGE_MIME_TYPES.has(file.type)) {
     return `“${file.name}” doesn’t look like a JPG or PNG image.`;
+  }
+  if (file.size === 0) {
+    return `“${file.name}” is empty.`;
+  }
+  if (file.size > maxBytes) {
+    return `“${file.name}” is ${formatBytes(file.size)}. The limit is ${formatBytes(maxBytes)}.`;
+  }
+
+  return null;
+}
+
+/** Client-side pre-flight for a chosen Word document. Same caveat as `validatePdfFile`. */
+export function validateDocxFile(file: File, maxBytes: number): string | null {
+  if (!file.name.toLowerCase().endsWith('.docx')) {
+    return `“${file.name}” isn’t a .docx file.`;
+  }
+  if (!ACCEPTED_DOCX_MIME_TYPES.has(file.type)) {
+    return `“${file.name}” doesn’t look like a Word document.`;
   }
   if (file.size === 0) {
     return `“${file.name}” is empty.`;

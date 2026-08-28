@@ -63,7 +63,7 @@ async function isEncrypted(data: Uint8Array): Promise<boolean> {
 }
 
 /** Loads a document, translating parser failures into client-safe errors. */
-async function loadDocument(data: Uint8Array): Promise<PDFDocument> {
+export async function loadDocument(data: Uint8Array): Promise<PDFDocument> {
   if (!looksLikePdf(data)) {
     throw AppError.badRequest(
       ErrorCode.INVALID_PDF,
@@ -119,7 +119,7 @@ function applyProducerMetadata(doc: PDFDocument): void {
   doc.setModificationDate(new Date());
 }
 
-async function serialise(doc: PDFDocument): Promise<Uint8Array> {
+export async function serialise(doc: PDFDocument): Promise<Uint8Array> {
   applyProducerMetadata(doc);
   try {
     return await doc.save({ useObjectStreams: true });
@@ -380,7 +380,26 @@ export const pdfService = {
   /** Parses a document and returns its page structure. Also acts as validation. */
   async inspect(data: Uint8Array): Promise<PdfMetadata> {
     const doc = await loadDocument(data);
-    const metadata = describe(doc);
+
+    // `PDFDocument.load` can succeed on a file that has a valid header and
+    // trailer but a broken or missing page tree — it only fails once
+    // something actually walks the tree, which `describe` (via `getPages`)
+    // is the first thing to do. Caught here so that failure reads as the
+    // same "invalid PDF" every other malformed file produces, not a raw
+    // internal error.
+    let metadata: PdfMetadata;
+    try {
+      metadata = describe(doc);
+    } catch (cause) {
+      logger.warn('PDF page tree could not be read', {
+        error: cause instanceof Error ? cause.message : String(cause),
+      });
+      throw AppError.unprocessable(
+        ErrorCode.INVALID_PDF,
+        "We couldn't read this PDF. The file may be corrupted or incomplete.",
+        { cause },
+      );
+    }
 
     if (metadata.pageCount === 0) {
       throw AppError.unprocessable(

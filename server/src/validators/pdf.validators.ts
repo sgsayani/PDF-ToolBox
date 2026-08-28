@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { env } from '../config/env.js';
+import { OCR_LANGUAGES } from '../services/ocr.service.js';
 import { POSITION_PRESETS } from '../services/pdf.service.js';
 
 /** Opaque storage id: 16 random bytes, hex encoded. */
@@ -156,6 +157,46 @@ export const imagesToPdfSchema = z.object({
     .max(env.MAX_FILES_PER_REQUEST, `You can convert up to ${env.MAX_FILES_PER_REQUEST} images at once.`),
 });
 
+/** One field's submitted value: text (string), a checkbox (boolean), or a radio/dropdown/list selection. */
+const formFieldValueSchema = z.object({
+  name: z.string().min(1).max(300),
+  value: z.union([z.string().max(10_000), z.boolean(), z.array(z.string().max(1000)).max(200)]),
+});
+
+export const fillFormSchema = z.object({
+  fileId: fileIdSchema,
+  values: z.array(formFieldValueSchema).max(1000, 'Too many fields were submitted.'),
+});
+
+/**
+ * The password field carried alongside a multipart file upload for
+ * remove-password. Unlike `protectSchema` (which sets a *new* password,
+ * where a minimum length is a sane default), this is verifying a password
+ * that already exists and could be any length or shape, so only a sanity
+ * cap applies.
+ */
+export const removePasswordFieldsSchema = z.object({
+  password: z.string().min(1, 'Enter the password.').max(128, 'That password is too long.'),
+});
+
+export const ocrSchema = z.object({
+  fileId: fileIdSchema,
+  pages: applyToPagesSchema.default('all'),
+  language: z.enum(OCR_LANGUAGES, { errorMap: () => ({ message: 'Choose a supported language.' }) }).default('eng'),
+  generateSearchablePdf: z.boolean().default(true),
+});
+
+export const scannerCleanupSchema = z.object({
+  fileId: fileIdSchema,
+  pages: applyToPagesSchema.default('all'),
+  grayscale: z.boolean().default(false),
+  brightness: z.number().int().min(-100).max(100).default(0),
+  contrast: z.number().int().min(-100).max(100).default(0),
+  rotate: z.number().min(-15).max(15).default(0),
+  denoise: z.boolean().default(false),
+  cleanBackground: z.boolean().default(false),
+});
+
 export type OrganizeInput = z.infer<typeof organizeSchema>;
 export type SplitInput = z.infer<typeof splitSchema>;
 export type MergeInput = z.infer<typeof mergeSchema>;
@@ -167,3 +208,7 @@ export type ProtectInput = z.infer<typeof protectSchema>;
 export type ToJpgInput = z.infer<typeof toJpgSchema>;
 export type ToWordInput = z.infer<typeof toWordSchema>;
 export type ImagesToPdfInput = z.infer<typeof imagesToPdfSchema>;
+export type FillFormInput = z.infer<typeof fillFormSchema>;
+export type RemovePasswordFieldsInput = z.infer<typeof removePasswordFieldsSchema>;
+export type OcrInput = z.infer<typeof ocrSchema>;
+export type ScannerCleanupInput = z.infer<typeof scannerCleanupSchema>;

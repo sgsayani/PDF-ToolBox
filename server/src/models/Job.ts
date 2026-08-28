@@ -14,6 +14,11 @@ export const PDF_OPERATIONS = [
   'to-jpg',
   'to-word',
   'images-to-pdf',
+  'word-to-pdf',
+  'fill-form',
+  'remove-password',
+  'ocr',
+  'scanner-cleanup',
 ] as const;
 
 export type PdfOperation = (typeof PDF_OPERATIONS)[number];

@@ -36,14 +36,24 @@ async function openValidated(data: Uint8Array): Promise<{ doc: mupdf.PDFDocument
 }
 
 export const renderService = {
-  /** Rasterizes the given pages (1-based, or `'all'`) to JPEG at a fixed screen resolution. */
-  async rasterizePages(data: Uint8Array, pages: 'all' | number[]): Promise<RasterizedPage[]> {
+  /**
+   * Rasterizes the given pages (1-based, or `'all'`) to JPEG.
+   *
+   * `dpi` defaults to screen resolution, which is enough for a page export a
+   * person looks at. Callers that feed the result to something else — OCR,
+   * image cleanup — pass a higher value, since accuracy there depends on it.
+   */
+  async rasterizePages(
+    data: Uint8Array,
+    pages: 'all' | number[],
+    dpi: number = DEFAULT_DPI,
+  ): Promise<RasterizedPage[]> {
     const { doc, pageCount } = await openValidated(data);
     const targets =
       pages === 'all'
         ? Array.from({ length: pageCount }, (_, index) => index + 1)
         : validatePageNumbers(pages, pageCount);
-    const scale = DEFAULT_DPI / 72;
+    const scale = dpi / 72;
     const matrix = mupdf.Matrix.scale(scale, scale);
 
     try {

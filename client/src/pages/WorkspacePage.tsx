@@ -3,9 +3,16 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { FileWarning, ShieldCheck } from 'lucide-react';
 
+import { ExtractTextPanel } from '../components/workspace/ExtractTextPanel';
+import { ExtractTextViewer } from '../components/workspace/ExtractTextViewer';
+import { FormFieldsEditor } from '../components/workspace/FormFieldsEditor';
+import { FormFillPanel } from '../components/workspace/FormFillPanel';
+import { ImageResultDialog } from '../components/workspace/ImageResultDialog';
 import { MergeFileList } from '../components/workspace/MergeFileList';
 import { MergePanel } from '../components/workspace/MergePanel';
 import { MetadataPanel } from '../components/workspace/MetadataPanel';
+import { OcrPanel, type OcrFormState } from '../components/workspace/OcrPanel';
+import { OcrResultDialog } from '../components/workspace/OcrResultDialog';
 import { OrganizePanel } from '../components/workspace/OrganizePanel';
 import { PageGrid } from '../components/workspace/PageGrid';
 import { PageGridSection } from '../components/workspace/PageGridSection';
@@ -13,8 +20,11 @@ import { PageNumbersPanel, type PageNumbersFormState } from '../components/works
 import { PageToolbar } from '../components/workspace/PageToolbar';
 import { ProtectPanel } from '../components/workspace/ProtectPanel';
 import { ResultDialog } from '../components/workspace/ResultDialog';
+import { ScannerCleanupPanel, type CleanupFormState } from '../components/workspace/ScannerCleanupPanel';
 import { SignPanel, type SignFormState } from '../components/workspace/SignPanel';
 import { SplitPanel, type SplitMode } from '../components/workspace/SplitPanel';
+import { ToJpgPanel, type ToJpgApplyTo } from '../components/workspace/ToJpgPanel';
+import { ToolPanel } from '../components/workspace/ToolPanel';
 import { ToolRail } from '../components/workspace/ToolRail';
 import { WatermarkPanel, type WatermarkFormState } from '../components/workspace/WatermarkPanel';
 import { WorkspaceHeader } from '../components/workspace/WorkspaceHeader';
@@ -33,12 +43,15 @@ import { useWorkspaceDocument } from '../hooks/useWorkspaceDocument';
 import { cn } from '../lib/cn';
 import { createDrafts, isPristine } from '../lib/pages';
 import { formatBytes, formatFileCount, formatPageCount } from '../lib/format';
-import { AVAILABLE_TOOLS } from '../lib/tools';
+import { AVAILABLE_TOOLS, findTool } from '../lib/tools';
 import { ApiError } from '../services/apiClient';
 import { pdfApi } from '../services/pdfApi';
 import type {
   ApiFile,
+  FormFieldValue,
+  ImageExportResponse,
   MergeCandidate,
+  OcrResponse,
   OperationResponse,
   PageDraft,
   PageTarget,
@@ -56,7 +69,14 @@ function turn(rotation: number, direction: 'cw' | 'ccw'): number {
 /** Tools whose main content is the editable Organize/Split page grid, unchanged from Phase 1. */
 const DRAFT_GRID_TOOLS = new Set<WorkspaceTool>(['organize', 'split']);
 /** Tools that only need to know *which* pages to target, via a read-only grid. */
-const TARGET_GRID_TOOLS = new Set<WorkspaceTool>(['watermark', 'page-numbers', 'sign']);
+const TARGET_GRID_TOOLS = new Set<WorkspaceTool>([
+  'watermark',
+  'page-numbers',
+  'sign',
+  'to-jpg',
+  'ocr',
+  'scanner-cleanup',
+]);
 
 export function WorkspacePage() {
   const { document } = useWorkspaceDocument();
@@ -152,6 +172,69 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
     staleTime: 60_000,
   });
 
+  const [toJpgApplyTo, setToJpgApplyTo] = useState<ToJpgApplyTo>('all');
+  const [imageResult, setImageResult] = useState<ImageExportResponse | null>(null);
+
+  const [ocrForm, setOcrForm] = useState<OcrFormState>({
+    applyTo: 'all',
+    language: 'eng',
+    generateSearchablePdf: true,
+  });
+  const updateOcrForm = useCallback(
+    (patch: Partial<OcrFormState>) => setOcrForm((current) => ({ ...current, ...patch })),
+    [],
+  );
+  const [ocrResult, setOcrResult] = useState<OcrResponse | null>(null);
+
+  const [cleanupForm, setCleanupForm] = useState<CleanupFormState>({
+    applyTo: 'all',
+    grayscale: false,
+    brightness: 0,
+    contrast: 0,
+    rotate: 0,
+    denoise: false,
+    cleanBackground: false,
+  });
+  const updateCleanupForm = useCallback(
+    (patch: Partial<CleanupFormState>) => setCleanupForm((current) => ({ ...current, ...patch })),
+    [],
+  );
+
+  const extractTextQuery = useQuery({
+    queryKey: ['extracted-text', document.fileId],
+    queryFn: () => pdfApi.extractedText(document.fileId),
+    enabled: tool === 'extract-text',
+    staleTime: 60_000,
+  });
+
+  const formQuery = useQuery({
+    queryKey: ['form', document.fileId],
+    queryFn: () => pdfApi.form(document.fileId),
+    enabled: tool === 'fill-form',
+    staleTime: 60_000,
+  });
+
+  const [formValues, setFormValues] = useState<Record<string, FormFieldValue>>({});
+  // Seeds the editable values from the document's current field contents.
+  // Runs once: `Workspace` remounts fresh per document (keyed on fileId
+  // above), so there's no later document whose fields this could stomp on.
+  useEffect(() => {
+    const fields = formQuery.data?.fields;
+    if (!fields) return;
+    setFormValues((current) => {
+      if (Object.keys(current).length > 0) return current;
+      const seeded: Record<string, FormFieldValue> = {};
+      for (const field of fields) {
+        if (field.currentValue !== undefined) seeded[field.name] = field.currentValue;
+      }
+      return seeded;
+    });
+  }, [formQuery.data]);
+
+  const updateFormValue = useCallback((name: string, value: FormFieldValue) => {
+    setFormValues((current) => ({ ...current, [name]: value }));
+  }, []);
+
   // ---------------------------------------------------------------- mutations
 
   const handleSuccess = useCallback((response: OperationResponse, sourceTool: WorkspaceTool) => {
@@ -233,6 +316,51 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
     onError: handleError,
   });
 
+  const toJpgMutation = useMutation({
+    mutationFn: (pages: PageTarget) => pdfApi.toJpg(document.fileId, pages),
+    onSuccess: (response) => setImageResult(response),
+    onError: handleError,
+  });
+
+  const toWordMutation = useMutation({
+    mutationFn: () => pdfApi.toWord(document.fileId),
+    onSuccess: (response) => handleSuccess(response, 'to-word'),
+    onError: handleError,
+  });
+
+  const fillFormMutation = useMutation({
+    mutationFn: (values: { name: string; value: FormFieldValue }[]) =>
+      pdfApi.fillForm(document.fileId, values),
+    onSuccess: (response) => handleSuccess(response, 'fill-form'),
+    onError: handleError,
+  });
+
+  const ocrMutation = useMutation({
+    mutationFn: (pages: PageTarget) =>
+      pdfApi.ocr(document.fileId, {
+        pages,
+        language: ocrForm.language,
+        generateSearchablePdf: ocrForm.generateSearchablePdf,
+      }),
+    onSuccess: (response) => setOcrResult(response),
+    onError: handleError,
+  });
+
+  const cleanupMutation = useMutation({
+    mutationFn: (pages: PageTarget) =>
+      pdfApi.scannerCleanup(document.fileId, {
+        pages,
+        grayscale: cleanupForm.grayscale,
+        brightness: cleanupForm.brightness,
+        contrast: cleanupForm.contrast,
+        rotate: cleanupForm.rotate,
+        denoise: cleanupForm.denoise,
+        cleanBackground: cleanupForm.cleanBackground,
+      }),
+    onSuccess: (response) => handleSuccess(response, 'scanner-cleanup'),
+    onError: handleError,
+  });
+
   const isProcessing =
     organizeMutation.isPending ||
     splitMutation.isPending ||
@@ -241,7 +369,12 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
     pageNumbersMutation.isPending ||
     removeMetadataMutation.isPending ||
     signMutation.isPending ||
-    protectMutation.isPending;
+    protectMutation.isPending ||
+    toJpgMutation.isPending ||
+    toWordMutation.isPending ||
+    fillFormMutation.isPending ||
+    ocrMutation.isPending ||
+    cleanupMutation.isPending;
 
   // ------------------------------------------------------------------ uploads
 
@@ -454,14 +587,107 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
             if (protectPassword !== null) protectMutation.mutate(protectPassword);
           },
         };
+      case 'to-jpg': {
+        const noSelection = toJpgApplyTo === 'selected' && targetSelection.selectedKeys.size === 0;
+        const count = targetSelection.selectedKeys.size;
+        return {
+          label: toJpgApplyTo === 'selected' && count > 0 ? `Convert ${formatPageCount(count)}` : 'Convert to JPG',
+          disabled: noSelection,
+          loading: toJpgMutation.isPending,
+          run: () =>
+            toJpgMutation.mutate(
+              toJpgApplyTo === 'all' ? 'all' : targetSelection.selectedDrafts.map((draft) => draft.source),
+            ),
+        };
+      }
+      case 'extract-text':
+        return {
+          label: 'Download TXT',
+          disabled: !extractTextQuery.data?.hasText,
+          loading: false,
+          run: () => {
+            const pages = extractTextQuery.data?.pages;
+            if (!pages) return;
+            const text = pages
+              .map((page, index) => `── Page ${index + 1} ──\n\n${page || '(no text on this page)'}`)
+              .join('\n\n');
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const anchor = window.document.createElement('a');
+            anchor.href = url;
+            anchor.download = `${document.filename.replace(/\.pdf$/i, '')}.txt`;
+            anchor.click();
+            URL.revokeObjectURL(url);
+          },
+        };
+      case 'to-word':
+        return {
+          label: 'Convert to Word',
+          disabled: false,
+          loading: toWordMutation.isPending,
+          run: () => toWordMutation.mutate(),
+        };
+      case 'fill-form':
+        return {
+          label: 'Generate filled PDF',
+          disabled: !formQuery.data?.hasFields,
+          loading: fillFormMutation.isPending,
+          run: () => {
+            const fields = formQuery.data?.fields ?? [];
+            const values = fields
+              .filter((field) => field.type !== 'unsupported' && !field.readOnly)
+              .map((field) => ({ name: field.name, value: formValues[field.name] }))
+              .filter((entry): entry is { name: string; value: FormFieldValue } => entry.value !== undefined);
+            fillFormMutation.mutate(values);
+          },
+        };
+      case 'ocr': {
+        const noSelection = ocrForm.applyTo === 'selected' && targetSelection.selectedKeys.size === 0;
+        const count = targetSelection.selectedKeys.size;
+        return {
+          label: ocrForm.applyTo === 'selected' && count > 0 ? `Scan ${formatPageCount(count)}` : 'Run OCR',
+          disabled: noSelection,
+          loading: ocrMutation.isPending,
+          run: () =>
+            ocrMutation.mutate(
+              ocrForm.applyTo === 'all' ? 'all' : targetSelection.selectedDrafts.map((draft) => draft.source),
+            ),
+        };
+      }
+      case 'scanner-cleanup': {
+        const noSelection =
+          cleanupForm.applyTo === 'selected' && targetSelection.selectedKeys.size === 0;
+        const count = targetSelection.selectedKeys.size;
+        return {
+          label:
+            cleanupForm.applyTo === 'selected' && count > 0
+              ? `Clean ${formatPageCount(count)}`
+              : 'Clean & download',
+          disabled: noSelection,
+          loading: cleanupMutation.isPending,
+          run: () =>
+            cleanupMutation.mutate(
+              cleanupForm.applyTo === 'all' ? 'all' : targetSelection.selectedDrafts.map((draft) => draft.source),
+            ),
+        };
+      }
     }
   }, [
+    cleanupForm,
+    cleanupMutation,
+    document.filename,
     drafts,
+    extractTextQuery.data,
+    fillFormMutation,
+    formQuery.data,
+    formValues,
     hasChanges,
     mergeEntries,
     mergeMutation,
     mergeUploads.isUploading,
     metadataQuery.isLoading,
+    ocrForm,
+    ocrMutation,
     organizeMutation,
     pageNumbersForm,
     pageNumbersMutation,
@@ -475,6 +701,9 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
     splitMutation,
     targetSelection.selectedDrafts,
     targetSelection.selectedKeys.size,
+    toJpgApplyTo,
+    toJpgMutation,
+    toWordMutation,
     tool,
     watermarkForm,
     watermarkMutation,
@@ -578,6 +807,53 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
         value={signForm}
         onChange={updateSignForm}
         selectedCount={targetSelection.selectedKeys.size}
+        disabled={isProcessing}
+      />
+    ) : tool === 'to-jpg' ? (
+      <ToJpgPanel
+        applyTo={toJpgApplyTo}
+        onApplyToChange={setToJpgApplyTo}
+        totalPages={targetDrafts.length}
+        selectedCount={targetSelection.selectedKeys.size}
+        disabled={isProcessing}
+      />
+    ) : tool === 'extract-text' ? (
+      <ExtractTextPanel
+        pages={extractTextQuery.data?.pages}
+        isLoading={extractTextQuery.isLoading}
+        isError={extractTextQuery.isError}
+        hasText={extractTextQuery.data?.hasText ?? false}
+        onTryOcr={() => setTool('ocr')}
+      />
+    ) : tool === 'to-word' ? (
+      <ToolPanel tool={findTool('to-word')}>
+        <p className="text-[12.5px] leading-relaxed text-ink-muted">
+          Text is preserved; original fonts, columns and images aren't. Converts the whole
+          document.
+        </p>
+      </ToolPanel>
+    ) : tool === 'fill-form' ? (
+      <FormFillPanel
+        form={formQuery.data}
+        isLoading={formQuery.isLoading}
+        isError={formQuery.isError}
+      />
+    ) : tool === 'ocr' ? (
+      <OcrPanel
+        value={ocrForm}
+        onChange={updateOcrForm}
+        totalPages={targetDrafts.length}
+        selectedCount={targetSelection.selectedKeys.size}
+        disabled={isProcessing}
+      />
+    ) : tool === 'scanner-cleanup' ? (
+      <ScannerCleanupPanel
+        value={cleanupForm}
+        onChange={updateCleanupForm}
+        totalPages={targetDrafts.length}
+        selectedCount={targetSelection.selectedKeys.size}
+        previewPageNumber={targetSelection.selectedDrafts[0]?.source ?? 1}
+        preview={preview}
         disabled={isProcessing}
       />
     ) : (
@@ -742,10 +1018,27 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
                 </div>
               )}
             </div>
+          ) : tool === 'extract-text' ? (
+            <ExtractTextViewer
+              pages={extractTextQuery.data?.pages}
+              isLoading={extractTextQuery.isLoading}
+              isError={extractTextQuery.isError}
+              hasText={extractTextQuery.data?.hasText ?? false}
+              onTryOcr={() => setTool('ocr')}
+            />
+          ) : tool === 'fill-form' ? (
+            <FormFieldsEditor
+              fields={formQuery.data?.fields}
+              isLoading={formQuery.isLoading}
+              isError={formQuery.isError}
+              values={formValues}
+              onChange={updateFormValue}
+              disabled={isProcessing}
+            />
           ) : (
-            // metadata / protect: whole-document tools with nothing page-level
-            // to show, so the main area is a simple document summary instead
-            // of the page grid.
+            // metadata / protect / to-word: whole-document tools with nothing
+            // page-level to show, so the main area is a simple document
+            // summary instead of the page grid.
             <div className="mx-auto max-w-md p-4 pt-10 sm:p-6 sm:pt-16">
               <div className="rounded-lg border border-line bg-surface p-6 text-center">
                 <span
@@ -763,7 +1056,9 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
                 <p className="mt-4 text-[13px] leading-relaxed text-ink-muted">
                   {tool === 'protect'
                     ? 'Set a password on the left, then protect the document. Nobody will be able to open the result without it.'
-                    : 'Review this document’s metadata on the left, then remove it to download a cleaned copy.'}
+                    : tool === 'to-word'
+                      ? 'Convert this document to a Word file on the left. Text is preserved; original layout is not.'
+                      : 'Review this document’s metadata on the left, then remove it to download a cleaned copy.'}
                 </p>
               </div>
             </div>
@@ -777,7 +1072,7 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
         onClose={closeResult}
         onContinueEditing={() => void handleContinueEditing()}
         onStartOver={leave}
-        allowContinueEditing={resultTool !== 'protect'}
+        allowContinueEditing={resultTool !== 'protect' && resultTool !== 'to-word'}
         note={
           resultTool === 'protect' ? (
             <div className="rounded-md border border-warning/25 bg-warning-soft px-3 py-2.5 text-[12.5px] leading-relaxed text-warning">
@@ -785,6 +1080,18 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
             </div>
           ) : undefined
         }
+      />
+
+      <ImageResultDialog
+        result={imageResult}
+        onClose={() => setImageResult(null)}
+        onStartOver={leave}
+      />
+
+      <OcrResultDialog
+        result={ocrResult}
+        filename={document.filename}
+        onClose={() => setOcrResult(null)}
       />
 
       <Modal

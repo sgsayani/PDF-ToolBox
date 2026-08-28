@@ -2,15 +2,19 @@ import type { Request, Response } from 'express';
 
 import { isAppError } from '../errors/AppError.js';
 import type { PdfOperation } from '../models/Job.js';
+import { cleanupService } from '../services/cleanup.service.js';
+import { formService } from '../services/form.service.js';
 import { jobService, type FileSummary } from '../services/job.service.js';
 import { pdfService } from '../services/pdf.service.js';
 import { storageService, type StoredFile } from '../services/storage.service.js';
 import { withSuffix } from '../utils/filename.js';
 import type {
+  FillFormInput,
   MergeInput,
   OrganizeInput,
   PageNumbersInput,
   RemoveMetadataInput,
+  ScannerCleanupInput,
   SignInput,
   SplitInput,
   WatermarkInput,
@@ -175,6 +179,38 @@ export const pdfController = {
       transform: ([data], { page, position, widthPercent, image }) =>
         pdfService.sign(data!, { page, position, widthPercent, image }),
       outputName: ([file]) => withSuffix(file!.filename, 'signed'),
+    });
+  },
+
+  /**
+   * Fills the submitted field values and flattens the form in one request —
+   * the output is a normal PDF, so this fits the shared pipeline exactly like
+   * every other content edit above.
+   */
+  fillForm: async (req: Request, res: Response): Promise<void> => {
+    const body = req.body as FillFormInput;
+    await executeOperation(res, body, {
+      operation: 'fill-form',
+      inputIds: ({ fileId }) => [fileId],
+      transform: ([data], { values }) => formService.fill(data!, values),
+      outputName: ([file]) => withSuffix(file!.filename, 'filled'),
+    });
+  },
+
+  /**
+   * Rebuilds selected pages as adjusted images and re-embeds them; produces a
+   * normal PDF, so it fits the shared pipeline like every content edit above.
+   */
+  cleanup: async (req: Request, res: Response): Promise<void> => {
+    const body = req.body as ScannerCleanupInput;
+    await executeOperation(res, body, {
+      operation: 'scanner-cleanup',
+      inputIds: ({ fileId }) => [fileId],
+      transform: (
+        [data],
+        { pages, grayscale, brightness, contrast, rotate, denoise, cleanBackground },
+      ) => cleanupService.clean(data!, { pages, grayscale, brightness, contrast, rotate, denoise, cleanBackground }),
+      outputName: ([file]) => withSuffix(file!.filename, 'enhanced'),
     });
   },
 };

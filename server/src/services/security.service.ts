@@ -1,7 +1,7 @@
 import { PDFDocument as SecurePdfDocument } from '@cantoo/pdf-lib';
 
 import { AppError, ErrorCode } from '../errors/AppError.js';
-import { pdfService } from './pdf.service.js';
+import { looksLikePdf, pdfService } from './pdf.service.js';
 
 /**
  * Password protection, kept isolated in its own service and its own PDF
@@ -18,6 +18,9 @@ export interface ProtectResult {
   output: Uint8Array;
   pageCount: number;
 }
+
+/** `@cantoo/pdf-lib`'s own message when the supplied password doesn't match. */
+const WRONG_PASSWORD_MESSAGE = 'Password incorrect';
 
 export const securityService = {
   /**
@@ -56,6 +59,58 @@ export const securityService = {
       return { output, pageCount };
     } catch (cause) {
       throw AppError.internal('Failed to write the protected PDF.', { cause });
+    }
+  },
+
+  /**
+   * Decrypts a document with a user-supplied password and produces a normal,
+   * unprotected PDF. This only ever *removes* a password the caller already
+   * knows — there is no attempt to guess, crack or otherwise bypass one.
+   *
+   * `pdf-lib` can't read encrypted content at all, so — like `protect` —
+   * this goes through `@cantoo/pdf-lib` instead. Unlike `protect`, the input
+   * is *expected* to be encrypted, so the normal `pdf.service` validation
+   * (which rejects encrypted files) is deliberately not used here; a cheap
+   * PDF-header check stands in for it instead.
+   */
+  async removePassword(data: Uint8Array, password: string): Promise<ProtectResult> {
+    if (!looksLikePdf(data)) {
+      throw AppError.badRequest(
+        ErrorCode.INVALID_PDF,
+        "This file doesn't look like a PDF. Please upload a valid .pdf file.",
+      );
+    }
+
+    let doc;
+    try {
+      doc = await SecurePdfDocument.load(data, { password, updateMetadata: false });
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : String(cause);
+
+      if (message === WRONG_PASSWORD_MESSAGE) {
+        throw AppError.unprocessable(
+          ErrorCode.INCORRECT_PASSWORD,
+          'That password is incorrect. Please check it and try again.',
+          { cause },
+        );
+      }
+
+      throw AppError.unprocessable(
+        ErrorCode.INVALID_PDF,
+        "We couldn't read this PDF. It may be corrupted or use an unsupported encryption method.",
+        { cause },
+      );
+    }
+
+    doc.setProducer('PDF Toolbox');
+    doc.setCreator('PDF Toolbox');
+    doc.setModificationDate(new Date());
+
+    try {
+      const output = await doc.save({ useObjectStreams: true });
+      return { output, pageCount: doc.getPageCount() };
+    } catch (cause) {
+      throw AppError.internal('Failed to write the unlocked PDF.', { cause });
     }
   },
 };
