@@ -27,7 +27,15 @@ export const authController = {
   },
 
   logout: (_req: Request, res: Response): void => {
-    res.clearCookie(SESSION_COOKIE, { path: sessionCookieOptions.path });
+    // A browser matches a clearing Set-Cookie against the same attributes
+    // the cookie was set with (path, sameSite, secure) — passing only
+    // `path` can silently fail to clear a `SameSite=None` cookie in some
+    // browsers, leaving the session cookie stuck.
+    res.clearCookie(SESSION_COOKIE, {
+      path: sessionCookieOptions.path,
+      sameSite: sessionCookieOptions.sameSite,
+      secure: sessionCookieOptions.secure,
+    });
     res.status(204).end();
   },
 

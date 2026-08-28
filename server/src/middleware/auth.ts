@@ -11,7 +11,12 @@ export const SESSION_COOKIE = 'pdftoolbox_session';
 export const sessionCookieOptions = {
   httpOnly: true,
   secure: env.isProduction,
-  sameSite: 'lax' as const,
+  // Dev: client and API share an origin via the Vite proxy, so `lax` (and
+  // plain HTTP) is fine. Production: client (Vercel) and API (a separate
+  // host) are different origins, so the cookie needs `none` to be sent on a
+  // cross-site fetch — which browsers only allow when `secure` is also set,
+  // true here since `secure` already tracks production.
+  sameSite: env.isProduction ? ('none' as const) : ('lax' as const),
   maxAge: SESSION_MAX_AGE_MS,
   path: '/',
 };
