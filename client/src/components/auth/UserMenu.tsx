@@ -19,7 +19,7 @@ function initials(name: string): string {
  * otherwise. Signed-in users get an avatar with a small menu instead.
  */
 export function UserMenu() {
-  const { user, isLoading, logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -40,8 +40,11 @@ export function UserMenu() {
     };
   }, [open]);
 
-  if (isLoading) return <div className="size-9" aria-hidden="true" />;
-
+  // Defaults to the logged-out buttons while the session check (`/api/auth/me`)
+  // is still in flight — on a slow or cold-started API that can take a while,
+  // and a blank header for that whole time is worse than a brief flicker from
+  // "Log in" to an avatar for the minority of visits that turn out to be
+  // signed in.
   if (!user) {
     return (
       <div className="flex items-center gap-1.5">
