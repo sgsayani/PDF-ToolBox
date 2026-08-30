@@ -23,6 +23,19 @@ async function bootstrap(): Promise<void> {
     });
   });
 
+  // Without this, a failed bind (most commonly EADDRINUSE from a leftover
+  // dev server still holding the port) leaves the process alive but never
+  // listening — every request then fails opaquely at the proxy instead of
+  // with a clear reason here.
+  server.on('error', (error: NodeJS.ErrnoException) => {
+    if (error.code === 'EADDRINUSE') {
+      logger.error(`Port ${env.PORT} is already in use — stop whatever else is using it and restart.`);
+    } else {
+      logger.error('Server failed to start', { error: error.stack ?? error.message });
+    }
+    process.exit(1);
+  });
+
   const shutdown = (signal: string) => {
     logger.info(`Received ${signal} — shutting down.`);
 

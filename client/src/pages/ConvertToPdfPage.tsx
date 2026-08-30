@@ -9,13 +9,27 @@ import { Button } from '../components/ui/Button';
 import { IconButton } from '../components/ui/IconButton';
 import { Logo } from '../components/ui/Logo';
 import { ProgressBar } from '../components/ui/ProgressBar';
+import { Seo } from '../components/seo/Seo';
+import { SupportingContent } from '../components/seo/SupportingContent';
 import { useToast } from '../components/ui/Toast';
 import { useLimits } from '../hooks/useLimits';
 import { formatBytes } from '../lib/format';
+import { breadcrumbLd, faqPageLd, webApplicationLd, type FaqItem } from '../lib/structuredData';
+import type { HowItWorksStep, RelatedLink } from '../lib/toolLandingContent';
 import { validateFileByType } from '../lib/validateFile';
 import { ApiError } from '../services/apiClient';
 import type { OperationResponse } from '../types';
 import type { UploadOptions } from '../services/apiClient';
+
+interface ConvertToPdfSeo {
+  /** Route this config is served at, e.g. "/excel-to-pdf". */
+  path: string;
+  metaDescription: string;
+  howItWorks: HowItWorksStep[];
+  features: string[];
+  faq: FaqItem[];
+  related: RelatedLink[];
+}
 
 export interface ConvertToPdfConfig {
   /** Shown in the browser-tab-ish header and page heading, e.g. "Excel to PDF". */
@@ -31,6 +45,7 @@ export interface ConvertToPdfConfig {
   /** Noun used in validation messages, e.g. "Excel". */
   validationLabel: string;
   convert: (file: File, options: UploadOptions) => Promise<OperationResponse>;
+  seo: ConvertToPdfSeo;
 }
 
 /**
@@ -89,6 +104,19 @@ export function ConvertToPdfPage({ config }: { config: ConvertToPdfConfig }) {
 
   return (
     <div className="flex min-h-dvh flex-col bg-canvas">
+      <Seo
+        title={config.title}
+        description={config.seo.metaDescription}
+        path={config.seo.path}
+        jsonLd={[
+          webApplicationLd({ name: config.title, description: config.seo.metaDescription, path: config.seo.path }),
+          breadcrumbLd([
+            { name: 'Home', path: '/' },
+            { name: config.title, path: config.seo.path },
+          ]),
+          ...(config.seo.faq.length > 0 ? [faqPageLd(config.seo.faq)] : []),
+        ]}
+      />
       <header className="sticky top-0 z-30 border-b border-line bg-canvas/90 backdrop-blur-md">
         <div className="flex h-15 items-center gap-3 px-4 sm:px-6">
           <Button variant="ghost" size="sm" icon={<ArrowLeft />} onClick={() => void navigate('/')}>
@@ -165,6 +193,13 @@ export function ConvertToPdfPage({ config }: { config: ConvertToPdfConfig }) {
           </Button>
         )}
       </main>
+
+      <SupportingContent
+        howItWorks={config.seo.howItWorks}
+        features={config.seo.features}
+        faq={config.seo.faq}
+        related={config.seo.related}
+      />
 
       <ResultDialog
         result={result}

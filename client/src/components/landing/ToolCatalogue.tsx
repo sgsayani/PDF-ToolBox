@@ -17,8 +17,8 @@ export function ToolCatalogue() {
           One workspace, every PDF task
         </h2>
         <p className="mt-2.5 text-[15px] leading-relaxed text-ink-muted">
-          Upload once and keep working. Organising, splitting and merging are available today; the
-          rest are on the way.
+          Upload once and keep working — organise, convert, protect and extract from the same
+          document without switching tools.
         </p>
       </div>
 

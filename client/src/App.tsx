@@ -13,6 +13,7 @@ import {
   POWERPOINT_TO_PDF_CONFIG,
   TEXT_TO_PDF_CONFIG,
 } from './lib/convertToPdfConfigs';
+import { TOOL_LANDING_PAGES } from './lib/toolLandingContent';
 import { AccountPage } from './pages/AccountPage';
 import { ConvertToPdfPage } from './pages/ConvertToPdfPage';
 import { ImagesToPdfPage } from './pages/ImagesToPdfPage';
@@ -21,6 +22,7 @@ import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { RemovePasswordPage } from './pages/RemovePasswordPage';
+import { ToolLandingPage } from './pages/ToolLandingPage';
 import { WordToPdfPage } from './pages/WordToPdfPage';
 import { WorkspacePage } from './pages/WorkspacePage';
 
@@ -44,6 +46,14 @@ export function App() {
             <Routes>
               <Route element={<SiteLayout />}>
                 <Route index element={<LandingPage />} />
+                {/* One route per entry in the tool catalogue — see toolLandingContent.ts. */}
+                {TOOL_LANDING_PAGES.map((content) => (
+                  <Route
+                    key={content.slug}
+                    path={content.slug}
+                    element={<ToolLandingPage content={content} />}
+                  />
+                ))}
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
               {/* These supply their own chrome. */}

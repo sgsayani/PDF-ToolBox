@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
 import { Logo } from '../components/ui/Logo';
+import { Seo } from '../components/seo/Seo';
 import { useAuth } from '../hooks/useAuth';
 import { ApiError } from '../services/apiClient';
 
@@ -40,6 +41,12 @@ export function RegisterPage() {
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-canvas px-4 py-12">
+      <Seo
+        title="Create an account"
+        description="Create a PDF Toolbox account to save files and track usage."
+        path="/register"
+        noindex
+      />
       <div className="mb-6">
         <Link to="/" aria-label="PDF Toolbox home">
           <Logo />

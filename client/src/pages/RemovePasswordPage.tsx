@@ -10,13 +10,49 @@ import { Field } from '../components/ui/Field';
 import { IconButton } from '../components/ui/IconButton';
 import { Logo } from '../components/ui/Logo';
 import { ProgressBar } from '../components/ui/ProgressBar';
+import { Seo } from '../components/seo/Seo';
+import { SupportingContent } from '../components/seo/SupportingContent';
 import { useToast } from '../components/ui/Toast';
 import { useLimits } from '../hooks/useLimits';
 import { formatBytes } from '../lib/format';
+import { breadcrumbLd, faqPageLd, webApplicationLd } from '../lib/structuredData';
 import { validatePdfFile } from '../lib/validateFile';
 import { ApiError } from '../services/apiClient';
 import { pdfApi } from '../services/pdfApi';
 import type { ApiFile } from '../types';
+
+const META_DESCRIPTION =
+  'Remove a password from a PDF online. Upload the protected file, enter its password, and download an unlocked copy. Free, no sign-up required.';
+
+const HOW_IT_WORKS = [
+  { title: 'Upload the protected PDF', body: 'Add the password-protected file — encrypted PDFs are accepted here specifically.' },
+  { title: 'Enter the password', body: 'Type the password the file was protected with.' },
+  { title: 'Unlock', body: 'Download an unlocked copy once the password is verified.' },
+];
+
+const FEATURES = [
+  'Removes a password from a PDF you already have the password for',
+  'The original protected file is left untouched',
+  'Clear error if the password is wrong',
+  'No account needed — unlock and download directly',
+];
+
+const FAQ = [
+  {
+    question: 'Can this remove a password I don’t know?',
+    answer:
+      'No. This only removes a password you already have — it verifies the password you enter and can’t guess, crack or bypass an unknown one.',
+  },
+  {
+    question: 'What happens to the file after unlocking?',
+    answer: 'It’s processed to produce the unlocked copy and then deleted automatically — nothing is kept afterwards.',
+  },
+];
+
+const RELATED = [
+  { label: 'PDF Password Protector', href: '/pdf-password-protector' },
+  { label: 'Redact PDF', href: '/redact-pdf' },
+];
 
 /**
  * The one PDF-first tool that can't work like the others: the normal upload
@@ -83,6 +119,23 @@ export function RemovePasswordPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-canvas">
+      <Seo
+        title="Remove PDF Password"
+        description={META_DESCRIPTION}
+        path="/remove-password"
+        jsonLd={[
+          webApplicationLd({
+            name: 'PDF Password Remover',
+            description: META_DESCRIPTION,
+            path: '/remove-password',
+          }),
+          breadcrumbLd([
+            { name: 'Home', path: '/' },
+            { name: 'Remove Password', path: '/remove-password' },
+          ]),
+          faqPageLd(FAQ),
+        ]}
+      />
       <header className="sticky top-0 z-30 border-b border-line bg-canvas/90 backdrop-blur-md">
         <div className="flex h-15 items-center gap-3 px-4 sm:px-6">
           <Button
@@ -177,6 +230,8 @@ export function RemovePasswordPage() {
           </div>
         )}
       </main>
+
+      <SupportingContent howItWorks={HOW_IT_WORKS} features={FEATURES} faq={FAQ} related={RELATED} />
 
       <ResultDialog
         result={result}

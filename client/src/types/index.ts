@@ -231,6 +231,8 @@ export interface WorkspaceDocument {
   /** Local bytes, used to render previews without downloading again. */
   blob: Blob;
   expiresAt: string;
+  /** Tool panel to open with, e.g. from a tool-specific landing page. Defaults to 'organize'. */
+  initialTool?: WorkspaceTool;
 }
 
 /** An additional file queued for merging. */

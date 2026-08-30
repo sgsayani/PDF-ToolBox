@@ -22,6 +22,7 @@ import { Modal } from '../components/ui/Modal';
 import { Segmented } from '../components/ui/Segmented';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useToast } from '../components/ui/Toast';
+import { Seo } from '../components/seo/Seo';
 import { useAuth } from '../hooks/useAuth';
 import { formatBytes, formatDateTime, formatPageCount } from '../lib/format';
 import { accountApi } from '../services/accountApi';
@@ -45,6 +46,12 @@ export function AccountPage() {
 
   return (
     <div className="min-h-dvh bg-canvas">
+      <Seo
+        title="Account"
+        description="Manage your PDF Toolbox account."
+        path="/account"
+        noindex
+      />
       <header className="sticky top-0 z-30 border-b border-line bg-canvas/90 backdrop-blur-md">
         <div className="mx-auto flex h-15 max-w-4xl items-center gap-3 px-4 sm:px-6">
           <Link to="/" aria-label="PDF Toolbox home" className="shrink-0">

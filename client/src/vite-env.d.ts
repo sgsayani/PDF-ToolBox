@@ -7,6 +7,8 @@
 interface ImportMetaEnv {
   /** Base URL of the API. Empty in development, where Vite proxies `/api`. */
   readonly VITE_API_BASE_URL?: string;
+  /** Production origin, e.g. `https://pdftoolbox.com`. Drives canonical/OG URLs and the sitemap. */
+  readonly VITE_SITE_URL?: string;
 }
 
 interface ImportMeta {

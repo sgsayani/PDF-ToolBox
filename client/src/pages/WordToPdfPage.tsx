@@ -9,13 +9,52 @@ import { Button } from '../components/ui/Button';
 import { IconButton } from '../components/ui/IconButton';
 import { Logo } from '../components/ui/Logo';
 import { ProgressBar } from '../components/ui/ProgressBar';
+import { Seo } from '../components/seo/Seo';
+import { SupportingContent } from '../components/seo/SupportingContent';
 import { useToast } from '../components/ui/Toast';
 import { useLimits } from '../hooks/useLimits';
 import { formatBytes } from '../lib/format';
+import { breadcrumbLd, faqPageLd, webApplicationLd } from '../lib/structuredData';
 import { validateDocxFile } from '../lib/validateFile';
 import { ApiError } from '../services/apiClient';
 import { documentsApi } from '../services/documentsApi';
 import type { ApiFile } from '../types';
+
+const META_DESCRIPTION =
+  'Convert a Word document (.docx) to PDF online. Text is preserved and reflowed onto A4 pages. Free, no sign-up required.';
+
+const HOW_IT_WORKS = [
+  { title: 'Upload your Word document', body: 'Add a .docx file — it’s checked before conversion starts.' },
+  {
+    title: 'Convert',
+    body: 'The document’s text is read and reflowed onto standard A4 pages with word-wrapping.',
+  },
+  { title: 'Download the PDF', body: 'Download the converted file once it’s ready.' },
+];
+
+const FEATURES = [
+  'Converts .docx text content to PDF',
+  'Reflows onto standard A4 pages automatically',
+  'No account needed — convert and download directly',
+];
+
+const FAQ = [
+  {
+    question: 'Will fonts, tables and images be preserved?',
+    answer:
+      'No — this reads the document’s text and reflows it onto a PDF page with a standard font. Original fonts, tables, images and page layout aren’t reproduced.',
+  },
+  {
+    question: 'What file types can I upload?',
+    answer: 'A .docx file (the modern Word format). Older .doc files aren’t supported.',
+  },
+];
+
+const RELATED = [
+  { label: 'PDF to Word', href: '/pdf-to-word' },
+  { label: 'Excel to PDF', href: '/excel-to-pdf' },
+  { label: 'PowerPoint to PDF', href: '/powerpoint-to-pdf' },
+];
 
 /**
  * The reverse of PDF → Word: builds a PDF from a Word document, so — like
@@ -68,6 +107,19 @@ export function WordToPdfPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-canvas">
+      <Seo
+        title="Convert Word to PDF"
+        description={META_DESCRIPTION}
+        path="/word-to-pdf"
+        jsonLd={[
+          webApplicationLd({ name: 'Word to PDF', description: META_DESCRIPTION, path: '/word-to-pdf' }),
+          breadcrumbLd([
+            { name: 'Home', path: '/' },
+            { name: 'Word to PDF', path: '/word-to-pdf' },
+          ]),
+          faqPageLd(FAQ),
+        ]}
+      />
       <header className="sticky top-0 z-30 border-b border-line bg-canvas/90 backdrop-blur-md">
         <div className="flex h-15 items-center gap-3 px-4 sm:px-6">
           <Button
@@ -149,6 +201,8 @@ export function WordToPdfPage() {
           </Button>
         )}
       </main>
+
+      <SupportingContent howItWorks={HOW_IT_WORKS} features={FEATURES} faq={FAQ} related={RELATED} />
 
       <ResultDialog
         result={result}

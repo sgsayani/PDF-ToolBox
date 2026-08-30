@@ -7,11 +7,16 @@ import { PrivacyNote } from '../components/landing/PrivacyNote';
 import { ToolCatalogue } from '../components/landing/ToolCatalogue';
 import { Dropzone } from '../components/upload/Dropzone';
 import { UploadTaskRow } from '../components/upload/UploadTaskRow';
+import { Seo } from '../components/seo/Seo';
 import { useToast } from '../components/ui/Toast';
 import { useLimits } from '../hooks/useLimits';
 import { useUploadQueue } from '../hooks/useUploadQueue';
 import { useWorkspaceDocument } from '../hooks/useWorkspaceDocument';
+import { webApplicationLd } from '../lib/structuredData';
 import type { UploadResponse } from '../types';
+
+const HOME_DESCRIPTION =
+  'Merge, split, compress, convert and edit PDF files online. Upload once and work with your document in one workspace — no account required, files removed automatically.';
 
 export function LandingPage() {
   const navigate = useNavigate();
@@ -51,6 +56,13 @@ export function LandingPage() {
 
   return (
     <>
+      <Seo
+        title="PDF Toolbox — Merge, Split, Compress & Convert PDFs"
+        description={HOME_DESCRIPTION}
+        path="/"
+        jsonLd={webApplicationLd({ name: 'PDF Toolbox', description: HOME_DESCRIPTION, path: '/' })}
+      />
+
       <section className="mx-auto max-w-6xl px-5 pt-14 pb-16 sm:px-8 sm:pt-20">
         <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:gap-14">
           <div className="max-w-xl">

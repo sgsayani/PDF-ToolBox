@@ -25,6 +25,7 @@ import { PageToolbar } from '../components/workspace/PageToolbar';
 import { ProtectPanel } from '../components/workspace/ProtectPanel';
 import { RedactPanel } from '../components/workspace/RedactPanel';
 import { ResultDialog } from '../components/workspace/ResultDialog';
+import { Seo } from '../components/seo/Seo';
 import { ScannerCleanupPanel, type CleanupFormState } from '../components/workspace/ScannerCleanupPanel';
 import { SignPanel, type SignFormState } from '../components/workspace/SignPanel';
 import { SplitPanel, type SplitMode } from '../components/workspace/SplitPanel';
@@ -95,9 +96,21 @@ export function WorkspacePage() {
   // Nothing to work on — most likely a direct visit or a page refresh.
   if (!document) return <Navigate to="/" replace />;
 
-  // Keyed on the file id so opening a result starts from a clean slate:
-  // no stale plan, selection or history from the previous document.
-  return <Workspace key={document.fileId} document={document} />;
+  return (
+    <>
+      {/* Working document, not a public URL with content of its own. */}
+      <Seo
+        title="Workspace"
+        description="Edit your uploaded PDF."
+        path="/workspace"
+        noindex
+      />
+      {/* Keyed on the file id so opening a result starts from a clean
+          slate: no stale plan, selection or history from the previous
+          document. */}
+      <Workspace key={document.fileId} document={document} />
+    </>
+  );
 }
 
 function Workspace({ document }: { document: WorkspaceDocument }) {
@@ -108,7 +121,7 @@ function Workspace({ document }: { document: WorkspaceDocument }) {
 
   const { preview, status: previewStatus } = usePdfPreview(document.blob);
 
-  const [tool, setTool] = useState<WorkspaceTool>('organize');
+  const [tool, setTool] = useState<WorkspaceTool>(document.initialTool ?? 'organize');
   const { recent, recordUse } = useRecentTools();
   const selectTool = useCallback(
     (next: WorkspaceTool) => {

@@ -10,15 +10,50 @@ import { UploadTaskRow } from '../components/upload/UploadTaskRow';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Logo } from '../components/ui/Logo';
+import { Seo } from '../components/seo/Seo';
+import { SupportingContent } from '../components/seo/SupportingContent';
 import { useToast } from '../components/ui/Toast';
 import { useLimits } from '../hooks/useLimits';
 import { useUploadQueue } from '../hooks/useUploadQueue';
 import { formatFileCount } from '../lib/format';
+import { breadcrumbLd, faqPageLd, webApplicationLd } from '../lib/structuredData';
 import { validateImageFile } from '../lib/validateFile';
 import { ApiError } from '../services/apiClient';
 import { imagesApi, type ImageUploadResponse } from '../services/imagesApi';
 import { pdfApi } from '../services/pdfApi';
 import type { ApiFile, ImageCandidate } from '../types';
+
+const META_DESCRIPTION =
+  'Convert JPG and PNG images to PDF online. Add images, drag to reorder, and combine them into one PDF — one image per page. Free, no sign-up required.';
+
+const HOW_IT_WORKS = [
+  { title: 'Add images', body: 'Add JPG or PNG files — add as many as you need, in any order.' },
+  { title: 'Reorder', body: 'Drag images into the order you want them to appear as pages.' },
+  { title: 'Convert', body: 'Combine every image into one PDF, one image per page.' },
+];
+
+const FEATURES = [
+  'Combine any number of JPG or PNG images into one PDF',
+  'Reorder images by dragging before converting',
+  'One image per page, in the order you set',
+  'No account needed — convert and download directly',
+];
+
+const FAQ = [
+  {
+    question: 'What image formats can I use?',
+    answer: 'JPG and PNG files.',
+  },
+  {
+    question: 'Can I change the order of the pages?',
+    answer: 'Yes — drag images into the order you want before converting. Each becomes one page, in that order.',
+  },
+];
+
+const RELATED = [
+  { label: 'PDF to JPG', href: '/pdf-to-jpg' },
+  { label: 'Merge PDF', href: '/merge-pdf' },
+];
 
 /**
  * The one tool that doesn't operate on an already-open PDF: it *builds* one
@@ -101,6 +136,19 @@ export function ImagesToPdfPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-canvas">
+      <Seo
+        title="Convert JPG & PNG to PDF"
+        description={META_DESCRIPTION}
+        path="/images-to-pdf"
+        jsonLd={[
+          webApplicationLd({ name: 'JPG to PDF', description: META_DESCRIPTION, path: '/images-to-pdf' }),
+          breadcrumbLd([
+            { name: 'Home', path: '/' },
+            { name: 'JPG to PDF', path: '/images-to-pdf' },
+          ]),
+          faqPageLd(FAQ),
+        ]}
+      />
       <header className="sticky top-0 z-30 border-b border-line bg-canvas/90 backdrop-blur-md">
         <div className="flex h-15 items-center gap-3 px-4 sm:px-6">
           <Button
@@ -193,6 +241,8 @@ export function ImagesToPdfPage() {
           </div>
         )}
       </main>
+
+      <SupportingContent howItWorks={HOW_IT_WORKS} features={FEATURES} faq={FAQ} related={RELATED} />
 
       <ResultDialog
         result={result}

@@ -1,0 +1,23 @@
+[
+  { "path": "/", "changefreq": "weekly", "priority": 1.0 },
+  { "path": "/merge-pdf", "changefreq": "monthly", "priority": 0.8 },
+  { "path": "/split-pdf", "changefreq": "monthly", "priority": 0.8 },
+  { "path": "/compress-pdf", "changefreq": "monthly", "priority": 0.8 },
+  { "path": "/crop-pdf", "changefreq": "monthly", "priority": 0.8 },
+  { "path": "/watermark-pdf", "changefreq": "monthly", "priority": 0.8 },
+  { "path": "/redact-pdf", "changefreq": "monthly", "priority": 0.8 },
+  { "path": "/pdf-password-protector", "changefreq": "monthly", "priority": 0.8 },
+  { "path": "/remove-password", "changefreq": "monthly", "priority": 0.8 },
+  { "path": "/pdf-to-jpg", "changefreq": "monthly", "priority": 0.8 },
+  { "path": "/images-to-pdf", "changefreq": "monthly", "priority": 0.8 },
+  { "path": "/pdf-to-word", "changefreq": "monthly", "priority": 0.8 },
+  { "path": "/word-to-pdf", "changefreq": "monthly", "priority": 0.8 },
+  { "path": "/pdf-ocr", "changefreq": "monthly", "priority": 0.8 },
+  { "path": "/pdf-text-extractor", "changefreq": "monthly", "priority": 0.8 },
+  { "path": "/translate-pdf", "changefreq": "monthly", "priority": 0.8 },
+  { "path": "/excel-to-pdf", "changefreq": "monthly", "priority": 0.7 },
+  { "path": "/csv-to-pdf", "changefreq": "monthly", "priority": 0.7 },
+  { "path": "/powerpoint-to-pdf", "changefreq": "monthly", "priority": 0.7 },
+  { "path": "/html-to-pdf", "changefreq": "monthly", "priority": 0.7 },
+  { "path": "/text-to-pdf", "changefreq": "monthly", "priority": 0.6 }
+]

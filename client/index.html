@@ -6,9 +6,10 @@
     <meta name="theme-color" content="#faf9f7" />
     <meta
       name="description"
-      content="PDF Toolbox — merge, split, reorder, rotate and organise PDF files in one workspace. Files are processed temporarily and deleted automatically."
+      content="PDF Toolbox — merge, split, compress and convert PDF files in one workspace. Files are processed temporarily and deleted automatically."
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -16,6 +17,29 @@
       rel="stylesheet"
     />
     <title>PDF Toolbox — everything you need to work with PDFs</title>
+
+    <!--
+      Static fallback for crawlers that don't execute JavaScript (social
+      link-preview scrapers). Every route sets its own, more specific
+      title/description/canonical/OG tags at runtime via react-helmet-async
+      (see src/components/seo/Seo.tsx) — these are what a non-JS request to
+      any URL actually sees, so they describe the product as a whole.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="PDF Toolbox" />
+    <meta property="og:title" content="PDF Toolbox — Merge, Split, Compress & Convert PDFs" />
+    <meta
+      property="og:description"
+      content="Merge, split, compress and convert PDF files online. Upload once and work with your document in one workspace — no account required."
+    />
+    <meta property="og:image" content="/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="PDF Toolbox — Merge, Split, Compress & Convert PDFs" />
+    <meta
+      name="twitter:description"
+      content="Merge, split, compress and convert PDF files online. Upload once and work with your document in one workspace — no account required."
+    />
+    <meta name="twitter:image" content="/og-image.png" />
   </head>
   <body>
     <div id="root"></div>

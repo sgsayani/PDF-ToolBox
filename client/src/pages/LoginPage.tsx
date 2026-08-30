@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
 import { Logo } from '../components/ui/Logo';
+import { Seo } from '../components/seo/Seo';
 import { useAuth } from '../hooks/useAuth';
 import { ApiError } from '../services/apiClient';
 
@@ -37,6 +38,7 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-canvas px-4 py-12">
+      <Seo title="Log in" description="Log in to your PDF Toolbox account." path="/login" noindex />
       <div className="mb-6">
         <Link to="/" aria-label="PDF Toolbox home">
           <Logo />
