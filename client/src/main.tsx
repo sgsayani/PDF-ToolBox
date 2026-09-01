@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Analytics } from '@vercel/analytics/react';
 import { HelmetProvider } from 'react-helmet-async';
 import { BrowserRouter } from 'react-router-dom';
 
@@ -15,6 +16,10 @@ createRoot(container).render(
       <BrowserRouter>
         <App />
       </BrowserRouter>
+      {/* Page views only — no cookies, nothing tied to an identity. Data
+          shows up in the Vercel dashboard's Analytics tab once enabled
+          there (Project → Analytics → Enable). */}
+      <Analytics />
     </HelmetProvider>
   </StrictMode>,
 );
